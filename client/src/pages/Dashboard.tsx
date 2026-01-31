@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '@/context/AppContext';
-import { formatDate, getGreeting, getDatesRange } from '@/utils/helpers';
-import { Flame, CheckCircle2, BarChart3, Plus } from 'lucide-react';
+import { formatDate, getDatesRange } from '@/utils/helpers';
+import { Flame, Plus } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const { habits, tasks, toggleHabitDate } = useApp();
@@ -20,40 +20,6 @@ const Dashboard: React.FC = () => {
   const completionPercentage = stats.totalHabits > 0 
     ? Math.round((stats.completedToday / stats.totalHabits) * 100) 
     : 0;
-
-  // Get last 7 days for weekly progress
-  const last7Days = getDatesRange(7).reverse();
-  const weeklyProgress = last7Days.map(date => {
-    const dateStr = formatDate(date);
-    const completed = habits.filter(h => h.completedDates?.includes(dateStr)).length;
-    return {
-      day: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      completed,
-      total: stats.totalHabits,
-      percentage: stats.totalHabits > 0 ? (completed / stats.totalHabits) * 100 : 0
-    };
-  });
-
-  // Get last 35 days for heatmap (5 weeks)
-  const heatmapDays = getDatesRange(35).reverse();
-  const heatmapData = heatmapDays.map(date => {
-    const dateStr = formatDate(date);
-    const completed = habits.filter(h => h.completedDates.includes(dateStr)).length;
-    return {
-      date: dateStr,
-      intensity: stats.totalHabits > 0 ? Math.round((completed / stats.totalHabits) * 4) : 0
-    };
-  });
-
-  const motivationalQuotes = [
-    "The secret of getting ahead is getting started.",
-    "Every day is a new beginning.",
-    "Small daily improvements are the key to staggering long-term results.",
-    "Success is the sum of small efforts repeated day in and day out.",
-    "Don't watch the clock; do what it does. Keep going."
-  ];
-
-  const quote = motivationalQuotes[new Date().getDate() % motivationalQuotes.length];
 
   return (
     <div className="page-container animate-fade-in">

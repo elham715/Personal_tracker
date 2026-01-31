@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/helpers';
 import { Plus, Trash2, Check, ChevronDown, ChevronRight } from 'lucide-react';
-import { PRIORITY_COLORS } from '@/utils/constants';
 
 const TaskManager: React.FC = () => {
   const { habits, tasks, addTask, toggleTask, deleteTask, toggleHabitDate } = useApp();
@@ -93,7 +92,6 @@ const TaskManager: React.FC = () => {
     const completedCount = dayTasks.filter(t => t.completed).length;
     const totalCount = dayTasks.length;
     const isExpanded = expandedDays.has(dayInfo.dateStr);
-    const isToday = dayInfo.label === 'Today';
 
     return (
       <div key={dayInfo.dateStr} className="mb-4">

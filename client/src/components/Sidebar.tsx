@@ -75,7 +75,6 @@ const Sidebar: React.FC = () => {
             <div className="space-y-1">
               {menuItems.map((item) => {
                 const active = isActive(item.path);
-                const Icon = item.icon;
 
                 return (
                   <Link
