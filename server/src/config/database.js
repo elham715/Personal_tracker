@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS habits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name VARCHAR(100) NOT NULL,
-  icon VARCHAR(10) DEFAULT '✨',
+  icon TEXT DEFAULT '✨',
   category VARCHAR(50) DEFAULT 'Health',
   color VARCHAR(20) DEFAULT 'purple',
   target INTEGER DEFAULT 1 CHECK (target >= 1),
