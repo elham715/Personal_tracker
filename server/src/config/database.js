@@ -151,5 +151,14 @@ export const toCamelCaseArray = (rows) => {
   return rows.map(toCamelCase);
 };
 
-export { getPool as pool };
+// Proxy so that pool.query(...) calls getPool().query(...) lazily
+const poolProxy = new Proxy({}, {
+  get(_target, prop) {
+    const p = getPool();
+    const value = p[prop];
+    return typeof value === 'function' ? value.bind(p) : value;
+  }
+});
+
+export { poolProxy as pool };
 export default connectDB;
