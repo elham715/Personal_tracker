@@ -24,11 +24,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (user === undefined) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-400">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -38,11 +35,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const AppLayout: React.FC = () => (
   <AppProvider>
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-artifacts" />
+    <div className="min-h-screen">
       <Sidebar />
-      {/* Main content: offset for desktop sidebar + mobile bottom nav padding */}
-      <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
+      <main className="lg:ml-[220px] min-h-screen">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/tasks" element={<TaskManager />} />
@@ -61,14 +56,7 @@ const App: React.FC = () => (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route
-        path="/*"
-        element={
-          <ProtectedRoute>
-            <AppLayout />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/*" element={<ProtectedRoute><AppLayout /></ProtectedRoute>} />
     </Routes>
   </Router>
 );

@@ -1,90 +1,109 @@
 import React from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatDate, getDatesRange } from '@/utils/helpers';
-import { Flame, TrendingUp, Check, Plus } from 'lucide-react';
+import { Check, Plus, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+const ProgressRing: React.FC<{ pct: number; size?: number }> = ({ pct, size = 100 }) => {
+  const stroke = 6;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (pct / 100) * circ;
+  return (
+    <svg width={size} height={size} className="block">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#6366f1" strokeWidth={stroke}
+        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+        className="progress-ring-circle" />
+      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central"
+        className="fill-gray-900 text-xl font-bold" style={{ fontSize: '22px' }}>
+        {pct}%
+      </text>
+    </svg>
+  );
+};
 
 const Dashboard: React.FC = () => {
   const { habits, tasks, toggleHabitDate } = useApp();
   const today = formatDate();
   const todayTasks = tasks.filter(t => t.date === today);
 
-  const stats = {
-    totalHabits: habits.length,
-    completedToday: habits.filter(h => h.completedDates?.includes(today)).length,
-    bestStreak: habits.reduce((max, h) => Math.max(max, h.streak || 0), 0),
-    totalCheckIns: habits.reduce((sum, h) => sum + (h.completedDates?.length || 0), 0),
-    tasksCompleted: todayTasks.filter(t => t.completed).length,
-    totalTasks: todayTasks.length,
+  const completedToday = habits.filter(h => h.completedDates?.includes(today)).length;
+  const totalHabits = habits.length;
+  const pct = totalHabits > 0 ? Math.round((completedToday / totalHabits) * 100) : 0;
+  const bestStreak = habits.reduce((max, h) => Math.max(max, h.streak || 0), 0);
+  const totalCheckins = habits.reduce((sum, h) => sum + (h.completedDates?.length || 0), 0);
+  const tasksCompleted = todayTasks.filter(t => t.completed).length;
+
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
   };
 
-  const completionPct = stats.totalHabits > 0 ? Math.round((stats.completedToday / stats.totalHabits) * 100) : 0;
-
   return (
-    <div className="page-container max-w-2xl mx-auto animate-fade-in">
+    <div className="page-container max-w-lg mx-auto">
       {/* Greeting */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </p>
+      <div className="pt-4 mb-6 animate-fade-up">
+        <p className="text-[13px] text-gray-400 font-medium">{greeting()}</p>
+        <h1 className="text-[22px] font-bold text-gray-900 -mt-0.5">
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+        </h1>
       </div>
 
-      {/* Progress Card */}
-      <div className="bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl p-5 mb-5 text-white">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium text-white/80">Today's Progress</h2>
-          <span className="text-2xl font-bold">{completionPct}%</span>
-        </div>
-        <div className="w-full h-2 bg-white/20 rounded-full overflow-hidden mb-2">
-          <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${completionPct}%` }} />
-        </div>
-        <p className="text-xs text-white/70">{stats.completedToday} of {stats.totalHabits} habits completed</p>
-      </div>
-
-      {/* Stats Row */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-white rounded-xl border border-gray-100 p-3 text-center">
-          <div className="text-xl font-bold text-gray-900">{stats.bestStreak}</div>
-          <div className="text-[11px] text-gray-500 flex items-center justify-center gap-1"><Flame size={12} className="text-orange-500" />Best Streak</div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-3 text-center">
-          <div className="text-xl font-bold text-gray-900">{stats.totalCheckIns}</div>
-          <div className="text-[11px] text-gray-500 flex items-center justify-center gap-1"><Check size={12} className="text-green-500" />Check-ins</div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-3 text-center">
-          <div className="text-xl font-bold text-gray-900">{stats.tasksCompleted}/{stats.totalTasks}</div>
-          <div className="text-[11px] text-gray-500 flex items-center justify-center gap-1"><TrendingUp size={12} className="text-blue-500" />Tasks</div>
-        </div>
-      </div>
-
-      {/* Quick Habits */}
-      {habits.length > 0 ? (
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-900">Today's Habits</h2>
-            <Link to="/habits" className="text-xs text-purple-600 font-medium">View All</Link>
+      {/* Progress + Stats */}
+      <div className="flex items-center gap-5 bg-white rounded-2xl p-5 mb-4 animate-fade-up" style={{ animationDelay: '60ms' }}>
+        <ProgressRing pct={pct} />
+        <div className="flex-1 space-y-3">
+          <div>
+            <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">Today</p>
+            <p className="text-[15px] font-semibold text-gray-900">{completedToday}/{totalHabits} habits</p>
           </div>
-          <div className="space-y-2">
+          <div className="flex gap-4">
+            <div>
+              <p className="text-[18px] font-bold text-gray-900">{bestStreak}</p>
+              <p className="text-[10px] text-gray-400">Best streak</p>
+            </div>
+            <div>
+              <p className="text-[18px] font-bold text-gray-900">{totalCheckins}</p>
+              <p className="text-[10px] text-gray-400">Check-ins</p>
+            </div>
+            <div>
+              <p className="text-[18px] font-bold text-gray-900">{tasksCompleted}</p>
+              <p className="text-[10px] text-gray-400">Tasks done</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Today's Habits */}
+      {habits.length > 0 ? (
+        <div className="mb-4 animate-fade-up" style={{ animationDelay: '120ms' }}>
+          <div className="flex items-center justify-between mb-2.5">
+            <h2 className="text-[13px] font-semibold text-gray-500 uppercase tracking-wider">Today's Habits</h2>
+            <Link to="/habits" className="text-[12px] text-indigo-600 font-medium flex items-center gap-0.5">
+              All <ArrowRight size={12} />
+            </Link>
+          </div>
+          <div className="space-y-1.5 stagger">
             {habits.map(habit => {
               const done = habit.completedDates?.includes(today);
               return (
-                <button
-                  key={habit.id}
-                  onClick={() => toggleHabitDate(habit.id, today)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                    done ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-100 hover:border-purple-200'
-                  }`}
-                >
-                  <span className="text-2xl">{habit.icon}</span>
-                  <span className={`flex-1 text-left text-sm font-medium ${done ? 'text-purple-700' : 'text-gray-800'}`}>{habit.name}</span>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                    done ? 'bg-purple-600 border-purple-600' : 'border-gray-300'
+                <button key={habit.id} onClick={() => toggleHabitDate(habit.id, today)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all active:scale-[0.98] animate-fade-up ${
+                    done ? 'bg-indigo-50' : 'bg-white'
                   }`}>
-                    {done && <Check size={14} className="text-white" strokeWidth={3} />}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg transition-all ${
+                    done ? 'bg-indigo-600 shadow-sm' : 'bg-gray-100'
+                  }`}>
+                    {done ? <Check size={16} className="text-white" strokeWidth={3} /> : <span className="text-base">{habit.icon}</span>}
                   </div>
-                  {habit.streak > 0 && (
-                    <span className="text-[11px] text-orange-600 font-medium">🔥{habit.streak}</span>
+                  <span className={`flex-1 text-left text-[14px] font-medium ${done ? 'text-indigo-700' : 'text-gray-800'}`}>
+                    {habit.name}
+                  </span>
+                  {(habit.streak || 0) > 0 && (
+                    <span className="text-[11px] text-orange-500 font-semibold">{habit.streak}d</span>
                   )}
                 </button>
               );
@@ -92,44 +111,40 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center mb-6">
-          <div className="text-4xl mb-3">🌱</div>
-          <h3 className="text-lg font-bold text-gray-900 mb-1">No Habits Yet</h3>
-          <p className="text-sm text-gray-500 mb-4">Start building better habits today!</p>
-          <Link to="/habit-manager" className="btn-primary inline-flex items-center gap-2 text-sm py-2.5 px-5">
-            <Plus size={16} /> Create Habit
+        <div className="bg-white rounded-2xl p-8 text-center mb-4 animate-fade-up" style={{ animationDelay: '120ms' }}>
+          <p className="text-3xl mb-2">🌱</p>
+          <p className="text-[14px] font-semibold text-gray-900 mb-1">No habits yet</p>
+          <p className="text-[12px] text-gray-400 mb-4">Start building better habits</p>
+          <Link to="/habit-manager"
+            className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-[13px] font-medium px-4 py-2 rounded-lg">
+            <Plus size={15} /> Create Habit
           </Link>
         </div>
       )}
 
       {/* Weekly Overview */}
       {habits.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">This Week</h2>
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 overflow-x-auto">
-            {habits.slice(0, 5).map(habit => {
+        <div className="bg-white rounded-2xl p-4 animate-fade-up" style={{ animationDelay: '180ms' }}>
+          <h2 className="text-[13px] font-semibold text-gray-500 uppercase tracking-wider mb-3">This Week</h2>
+          <div className="space-y-2.5">
+            {habits.slice(0, 4).map(habit => {
               const weekDays = getDatesRange(7);
               return (
-                <div key={habit.id} className="flex items-center gap-2 mb-3 last:mb-0">
-                  <span className="text-lg w-8 flex-shrink-0">{habit.icon}</span>
-                  <span className="text-xs text-gray-600 w-20 truncate flex-shrink-0">{habit.name}</span>
+                <div key={habit.id} className="flex items-center gap-2.5">
+                  <span className="text-sm w-6 text-center flex-shrink-0">{habit.icon}</span>
+                  <span className="text-[12px] text-gray-600 w-16 truncate flex-shrink-0">{habit.name}</span>
                   <div className="flex gap-1 flex-1 justify-end">
                     {weekDays.map((date, i) => {
-                      const dateStr = formatDate(date);
-                      const done = habit.completedDates.includes(dateStr);
-                      const isFuture = date > new Date();
+                      const d = formatDate(date);
+                      const done = habit.completedDates?.includes(d);
+                      const future = date > new Date();
                       return (
-                        <button
-                          key={i}
-                          onClick={() => !isFuture && toggleHabitDate(habit.id, dateStr)}
-                          disabled={isFuture}
-                          className={`w-7 h-7 rounded-lg text-[10px] flex items-center justify-center transition-all ${
-                            isFuture ? 'bg-gray-50 text-gray-300' :
-                            done ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400 hover:bg-purple-100'
-                          }`}
-                        >
+                        <div key={i} className={`w-6 h-6 rounded-md text-[9px] font-medium flex items-center justify-center ${
+                          future ? 'bg-gray-50 text-gray-300' :
+                          done ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'
+                        }`}>
                           {done ? '✓' : date.toLocaleDateString('en-US', { weekday: 'narrow' })}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>
@@ -139,13 +154,6 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Motivational Quote */}
-      <div className="mt-6 bg-gray-50 rounded-2xl p-5 text-center">
-        <p className="text-sm text-gray-600 italic leading-relaxed">
-          "Every day it gets a little easier. But you gotta do it every day — that's the hard part."
-        </p>
-      </div>
     </div>
   );
 };
