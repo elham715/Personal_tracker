@@ -5,9 +5,9 @@ import { Flame, Zap, Leaf, Plus, Trash2, Check, Sun, CalendarDays, ListChecks } 
 
 /* ── Urgency system — original themed labels ──────────── */
 const URGENCY = {
-  high:   { icon: Flame, label: 'Urgent',    gradient: 'from-rose-500 to-pink-500',   bg: 'bg-rose-500',   ring: 'ring-rose-200',   text: 'text-rose-600',   lightBg: 'bg-rose-50',   glow: '0 4px 20px -4px rgba(244,63,94,0.35)' },
-  medium: { icon: Zap,   label: 'Important', gradient: 'from-amber-400 to-orange-400', bg: 'bg-amber-400',  ring: 'ring-amber-200',  text: 'text-amber-600',  lightBg: 'bg-amber-50',  glow: '0 4px 20px -4px rgba(251,191,36,0.35)' },
-  low:    { icon: Leaf,  label: 'Chill',     gradient: 'from-teal-400 to-emerald-400', bg: 'bg-emerald-400', ring: 'ring-emerald-200', text: 'text-emerald-600', lightBg: 'bg-emerald-50', glow: '0 4px 20px -4px rgba(52,211,153,0.3)' },
+  high:   { icon: Flame, label: 'Urgent',    gradient: 'from-rose-500 to-pink-500',   bg: 'bg-rose-500',   ring: 'ring-rose-200',   text: 'text-rose-600',   lightBg: 'bg-rose-50',   glow: '0 4px 20px -4px rgba(244,63,94,0.35)',  cardBg: 'bg-rose-50/80 border-rose-200/60',     cardShadow: '0 2px 12px -3px rgba(244,63,94,0.15)' },
+  medium: { icon: Zap,   label: 'Important', gradient: 'from-amber-400 to-orange-400', bg: 'bg-amber-400',  ring: 'ring-amber-200',  text: 'text-amber-600',  lightBg: 'bg-amber-50',  glow: '0 4px 20px -4px rgba(251,191,36,0.35)', cardBg: 'bg-amber-50/80 border-amber-200/60',    cardShadow: '0 2px 12px -3px rgba(251,191,36,0.15)' },
+  low:    { icon: Leaf,  label: 'Chill',     gradient: 'from-teal-400 to-emerald-400', bg: 'bg-emerald-400', ring: 'ring-emerald-200', text: 'text-emerald-600', lightBg: 'bg-emerald-50', glow: '0 4px 20px -4px rgba(52,211,153,0.3)',  cardBg: 'bg-emerald-50/70 border-emerald-200/50', cardShadow: '0 2px 12px -3px rgba(52,211,153,0.12)' },
 } as const;
 
 type Priority = keyof typeof URGENCY;
@@ -40,7 +40,7 @@ const TaskManager: React.FC = () => {
       completed: h.completedDates.includes(dateStr),
       priority: 'high' as Priority, isHabit: true, habitId: h.id, date: dateStr, createdAt: '',
     }));
-    return [...fromHabits, ...tasks.filter(t => t.date === dateStr && !t.isHabit)];
+    return [...fromHabits, ...tasks.filter(t => t.date === dateStr && !t.isHabit).slice().reverse()];
   };
 
   const handleAdd = async () => {
@@ -69,9 +69,10 @@ const TaskManager: React.FC = () => {
     const isDone = task.completed;
     return (
       <div key={task.id} className="animate-fade-up group" style={{ animationDelay: `${i * 35}ms` }}>
-        <div className={`relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-          ${isDone ? 'bg-gray-50 opacity-60' : 'bg-white shadow-sm hover:shadow-md'}
-          active:scale-[0.99]`}>
+        <div className={`relative flex items-center gap-3 px-4 py-3 rounded-xl border transition-all
+          ${isDone ? 'bg-gray-50 border-gray-100 opacity-60' : `${u.cardBg} hover:shadow-md`}
+          active:scale-[0.99]`}
+          style={isDone ? undefined : { boxShadow: u.cardShadow }}>
           <button onClick={() => handleToggle(task)} className="flex-shrink-0">
             <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
               isDone ? `bg-gradient-to-br ${u.gradient}` : 'border-2 border-gray-200 hover:border-gray-300'
@@ -117,6 +118,9 @@ const TaskManager: React.FC = () => {
     { key: 'today' as const, label: 'Today', icon: Sun, count: total },
     { key: 'week' as const,  label: 'Week',  icon: CalendarDays },
     { key: 'all' as const,   label: 'All',   icon: ListChecks, count: tasks.filter(t => !t.isHabit).length },
+  ];
+
+  const allTasksReversed = tasks.filter(t => !t.isHabit).slice().reverse();
   ];
 
   return (
@@ -260,12 +264,12 @@ const TaskManager: React.FC = () => {
         })}
 
         {view === 'all' && (
-          tasks.filter(t => !t.isHabit).length === 0 && !composing ? (
+          allTasksReversed.length === 0 && !composing ? (
             <div className="text-center py-20 animate-fade-up">
               <p className="text-[14px] text-gray-400">No tasks created yet</p>
             </div>
           ) : (
-            tasks.filter(t => !t.isHabit).map((t, i) => renderTaskCard(t, i))
+            allTasksReversed.map((t, i) => renderTaskCard(t, i))
           )
         )}
       </div>
