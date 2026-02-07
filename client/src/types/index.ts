@@ -16,6 +16,7 @@ export interface Task {
   text: string;
   completed: boolean;
   priority: 'high' | 'medium' | 'low';
+  scope: 'daily' | 'weekly' | 'monthly';
   isHabit: boolean;
   habitId?: string;
   date: string;

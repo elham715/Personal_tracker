@@ -6,6 +6,8 @@ const formatTask = (row) => {
   if (!task) return null;
   // Add date alias for frontend compatibility
   task.date = task.createdDate;
+  // Ensure scope is always present
+  task.scope = task.scope || 'daily';
   return task;
 };
 
@@ -29,6 +31,12 @@ const Task = {
     if (filters.completed !== undefined) {
       query += ` AND completed = $${paramIdx}`;
       params.push(filters.completed);
+      paramIdx++;
+    }
+
+    if (filters.scope) {
+      query += ` AND scope = $${paramIdx}`;
+      params.push(filters.scope);
       paramIdx++;
     }
 
@@ -57,12 +65,12 @@ const Task = {
   },
 
   // Create a new task
-  async create({ userId, text, priority, isHabit, habitId, createdDate }) {
+  async create({ userId, text, priority, isHabit, habitId, createdDate, scope }) {
     const { rows } = await pool.query(
-      `INSERT INTO tasks (user_id, text, priority, is_habit, habit_id, created_date, completed)
-       VALUES ($1, $2, $3, $4, $5, $6, false)
+      `INSERT INTO tasks (user_id, text, priority, is_habit, habit_id, created_date, completed, scope)
+       VALUES ($1, $2, $3, $4, $5, $6, false, $7)
        RETURNING *`,
-      [userId, text, priority || 'medium', isHabit || false, habitId || null, createdDate]
+      [userId, text, priority || 'medium', isHabit || false, habitId || null, createdDate, scope || 'daily']
     );
     return formatTask(rows[0]);
   },

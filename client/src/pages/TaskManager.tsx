@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/helpers';
-import { Flame, Zap, Leaf, Plus, Trash2, Check, Sun, CalendarDays, ListChecks } from 'lucide-react';
+import { Flame, Zap, Leaf, Plus, Trash2, Check, Sun, CalendarDays, ListChecks, Calendar, Target } from 'lucide-react';
 
 /* ── Urgency system — original themed labels ──────────── */
 const URGENCY = {
@@ -11,6 +11,7 @@ const URGENCY = {
 } as const;
 
 type Priority = keyof typeof URGENCY;
+type Scope = 'daily' | 'weekly' | 'monthly';
 
 const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
@@ -19,22 +20,78 @@ const sortByUrgencyThenNewest = (items: any[]) =>
     const pa = PRIORITY_ORDER[a.priority] ?? 2;
     const pb = PRIORITY_ORDER[b.priority] ?? 2;
     if (pa !== pb) return pa - pb;
-    // within same priority: newest first (later index = newer)
-    return 0; // preserve reverse order from input
+    return 0;
   });
+
+/* ── Date helpers ── */
+const getWeekKey = (d = new Date()) => {
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(d);
+  monday.setDate(diff);
+  return monday.toLocaleDateString('en-CA');
+};
+
+const getMonthKey = (d = new Date()) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}-01`;
+};
+
+const getWeekLabel = () => {
+  const now = new Date();
+  const day = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${fmt(monday)} – ${fmt(sunday)}`;
+};
+
+const getMonthLabel = () => {
+  return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+};
+
+/* ── Scope tab config ── */
+const SCOPE_TABS = [
+  { key: 'daily' as Scope,   label: 'Daily',   icon: Sun },
+  { key: 'weekly' as Scope,  label: 'Weekly',  icon: CalendarDays },
+  { key: 'monthly' as Scope, label: 'Monthly', icon: Calendar },
+];
+
+const SCOPE_HERO: Record<Scope, string> = {
+  daily:   'from-indigo-600 via-indigo-500 to-violet-500',
+  weekly:  'from-cyan-600 via-blue-500 to-indigo-500',
+  monthly: 'from-violet-600 via-purple-500 to-fuchsia-500',
+};
+
+const SCOPE_LABEL: Record<Scope, string> = {
+  daily:   "TODAY'S PROGRESS",
+  weekly:  'WEEKLY PROGRESS',
+  monthly: 'MONTHLY PROGRESS',
+};
 
 const TaskManager: React.FC = () => {
   const { habits, tasks, addTask, toggleTask, deleteTask, toggleHabitDate } = useApp();
-  const [view, setView] = useState<'today' | 'week' | 'all'>('today');
+  const [scope, setScope] = useState<Scope>('daily');
+  const [dailyView, setDailyView] = useState<'today' | 'week' | 'all'>('today');
   const [composing, setComposing] = useState(false);
   const [newText, setNewText] = useState('');
   const [selectedUrgency, setSelectedUrgency] = useState<Priority>('low');
   const inputRef = useRef<HTMLInputElement>(null);
   const today = formatDate();
+  const weekKey = getWeekKey();
+  const monthKey = getMonthKey();
 
   useEffect(() => {
     if (composing) setTimeout(() => inputRef.current?.focus(), 120);
   }, [composing]);
+
+  useEffect(() => {
+    setComposing(false);
+    setNewText('');
+  }, [scope]);
 
   /* ── Data helpers ── */
   const getWeekDays = () => Array.from({ length: 7 }, (_, i) => {
@@ -45,19 +102,27 @@ const TaskManager: React.FC = () => {
     };
   });
 
-  const tasksFor = (dateStr: string) => {
+  const dailyTasksFor = (dateStr: string) => {
     const fromHabits = habits.filter(h => h?.id && Array.isArray(h.completedDates)).map(h => ({
       id: `habit_${h.id}_${dateStr}`, text: h.name, icon: h.icon,
       completed: h.completedDates.includes(dateStr),
-      priority: 'high' as Priority, isHabit: true, habitId: h.id, date: dateStr, createdAt: '',
+      priority: 'high' as Priority, isHabit: true, habitId: h.id, date: dateStr, createdAt: '', scope: 'daily' as Scope,
     }));
-    const dateTasks = tasks.filter(t => t.date === dateStr && !t.isHabit).slice().reverse();
+    const dateTasks = tasks.filter(t => t.date === dateStr && !t.isHabit && (t.scope === 'daily' || !t.scope)).slice().reverse();
     return [...fromHabits, ...sortByUrgencyThenNewest(dateTasks)];
+  };
+
+  const scopedTasks = (s: Scope) => {
+    const key = s === 'weekly' ? weekKey : s === 'monthly' ? monthKey : today;
+    return sortByUrgencyThenNewest(
+      tasks.filter(t => !t.isHabit && t.scope === s && t.date === key).slice().reverse()
+    );
   };
 
   const handleAdd = async () => {
     if (!newText.trim()) return;
-    await addTask({ text: newText, completed: false, priority: selectedUrgency, isHabit: false, date: today });
+    const dateKey = scope === 'weekly' ? weekKey : scope === 'monthly' ? monthKey : today;
+    await addTask({ text: newText, completed: false, priority: selectedUrgency, isHabit: false, date: dateKey, scope });
     setNewText('');
     setSelectedUrgency('low');
     setTimeout(() => inputRef.current?.focus(), 50);
@@ -68,13 +133,26 @@ const TaskManager: React.FC = () => {
     else toggleTask(task.id);
   }, [toggleHabitDate, toggleTask]);
 
-  /* ── Stats ── */
-  const todayItems = tasksFor(today);
-  const done = todayItems.filter(t => t.completed).length;
-  const total = todayItems.length;
+  /* ── Stats per scope ── */
+  const todayItems = dailyTasksFor(today);
+  const weekItems = scopedTasks('weekly');
+  const monthItems = scopedTasks('monthly');
+
+  const getStatsForScope = () => {
+    if (scope === 'daily') {
+      const items = todayItems;
+      return { done: items.filter(t => t.completed).length, total: items.length };
+    }
+    if (scope === 'weekly') {
+      return { done: weekItems.filter(t => t.completed).length, total: weekItems.length };
+    }
+    return { done: monthItems.filter(t => t.completed).length, total: monthItems.length };
+  };
+
+  const { done, total } = getStatsForScope();
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  /* ── Render helpers (plain functions, NOT components) ── */
+  /* ── Render helpers ── */
   const renderTaskCard = (task: any, i: number) => {
     const u = URGENCY[task.priority as Priority] || URGENCY.low;
     const UIcon = u.icon;
@@ -126,13 +204,25 @@ const TaskManager: React.FC = () => {
   const r = 32; const stroke = 5; const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
 
-  const views = [
-    { key: 'today' as const, label: 'Today', icon: Sun, count: total },
+  const dailyViews = [
+    { key: 'today' as const, label: 'Today', icon: Sun, count: todayItems.length },
     { key: 'week' as const,  label: 'Week',  icon: CalendarDays },
-    { key: 'all' as const,   label: 'All',   icon: ListChecks, count: tasks.filter(t => !t.isHabit).length },
+    { key: 'all' as const,   label: 'All',   icon: ListChecks, count: tasks.filter(t => !t.isHabit && (t.scope === 'daily' || !t.scope)).length },
   ];
 
-  const allTasksSorted = sortByUrgencyThenNewest(tasks.filter(t => !t.isHabit).slice().reverse());
+  const allDailyTasks = sortByUrgencyThenNewest(tasks.filter(t => !t.isHabit && (t.scope === 'daily' || !t.scope)).slice().reverse());
+
+  const scopeSubtext = scope === 'daily'
+    ? (total === 0 ? 'No tasks yet — add one!' : done === total ? '🎉 All done!' : `${total - done} remaining`)
+    : scope === 'weekly'
+    ? (total === 0 ? 'Plan your week!' : done === total ? '🎉 Week crushed!' : `${total - done} to go`)
+    : (total === 0 ? 'Set monthly goals!' : done === total ? '🎉 Month complete!' : `${total - done} remaining`);
+
+  const composerPlaceholder: Record<Scope, string> = {
+    daily: 'What needs to be done today?',
+    weekly: 'Add a weekly goal...',
+    monthly: 'Add a monthly goal...',
+  };
 
   return (
     <div className="page-container max-w-lg mx-auto">
@@ -144,9 +234,24 @@ const TaskManager: React.FC = () => {
         <h1 className="text-[26px] font-bold text-gray-900 leading-tight -mt-0.5">Tasks</h1>
       </div>
 
-      {/* Hero banner (today view only) */}
-      {view === 'today' && total > 0 && (
-        <div className="bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-500 rounded-2xl p-5 mb-5 text-white animate-fade-up" style={{ animationDelay: '30ms' }}>
+      {/* ── Scope switcher (Daily / Weekly / Monthly) ── */}
+      <div className="flex items-center bg-white rounded-2xl p-1 mb-4 shadow-sm animate-fade-up" style={{ animationDelay: '20ms' }}>
+        {SCOPE_TABS.map(tab => (
+          <button key={tab.key} onClick={() => setScope(tab.key)}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-[12px] font-semibold transition-all ${
+              scope === tab.key
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}>
+            <tab.icon size={14} />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Progress banner ── */}
+      {total > 0 && (
+        <div className={`bg-gradient-to-br ${SCOPE_HERO[scope]} rounded-2xl p-5 mb-5 text-white animate-fade-up`} style={{ animationDelay: '30ms' }}>
           <div className="flex items-center gap-5">
             <div className="relative flex-shrink-0">
               <svg width={76} height={76}>
@@ -158,35 +263,49 @@ const TaskManager: React.FC = () => {
               <span className="absolute inset-0 flex items-center justify-center text-[18px] font-bold">{pct}%</span>
             </div>
             <div>
-              <p className="text-white/60 text-[11px] font-medium uppercase tracking-wider">Today's Progress</p>
+              <p className="text-white/60 text-[11px] font-medium uppercase tracking-wider">{SCOPE_LABEL[scope]}</p>
               <p className="text-[22px] font-bold leading-tight">{done} of {total}</p>
-              <p className="text-white/50 text-[12px] mt-0.5">
-                {total === 0 ? 'No tasks yet — add one!' : done === total ? '🎉 All done!' : `${total - done} remaining`}
-              </p>
+              <p className="text-white/50 text-[12px] mt-0.5">{scopeSubtext}</p>
+              {scope === 'weekly' && <p className="text-white/40 text-[10px] mt-0.5">{getWeekLabel()}</p>}
+              {scope === 'monthly' && <p className="text-white/40 text-[10px] mt-0.5">{getMonthLabel()}</p>}
             </div>
           </div>
         </div>
       )}
 
-      {/* View switcher */}
-      <div className="flex items-center bg-white rounded-2xl p-1 mb-5 shadow-sm animate-fade-up" style={{ animationDelay: '50ms' }}>
-        {views.map(v => (
-          <button key={v.key} onClick={() => setView(v.key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all ${
-              view === v.key ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:text-gray-600'
-            }`}>
-            <v.icon size={14} />
-            {v.label}
-            {v.count !== undefined && v.count > 0 && (
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                view === v.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'
-              }`}>{v.count}</span>
-            )}
-          </button>
-        ))}
-      </div>
+      {/* ── Daily sub-tabs (Today / Week / All) ── */}
+      {scope === 'daily' && (
+        <div className="flex items-center bg-white rounded-2xl p-1 mb-5 shadow-sm animate-fade-up" style={{ animationDelay: '50ms' }}>
+          {dailyViews.map(v => (
+            <button key={v.key} onClick={() => setDailyView(v.key)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all ${
+                dailyView === v.key ? 'bg-indigo-50 text-indigo-600' : 'text-gray-400 hover:text-gray-600'
+              }`}>
+              <v.icon size={14} />
+              {v.label}
+              {v.count !== undefined && v.count > 0 && (
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                  dailyView === v.key ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'
+                }`}>{v.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {/* Composer — inlined to prevent remounting on keystroke */}
+      {/* ── Period label for weekly/monthly when empty ── */}
+      {scope === 'weekly' && total === 0 && (
+        <div className="text-center mb-2 animate-fade-up" style={{ animationDelay: '40ms' }}>
+          <p className="text-[11px] text-gray-400 font-medium">{getWeekLabel()}</p>
+        </div>
+      )}
+      {scope === 'monthly' && total === 0 && (
+        <div className="text-center mb-2 animate-fade-up" style={{ animationDelay: '40ms' }}>
+          <p className="text-[11px] text-gray-400 font-medium">{getMonthLabel()}</p>
+        </div>
+      )}
+
+      {/* ── Composer ── */}
       {composing && (
         <div className="animate-scale-in mb-5">
           <div className="bg-white rounded-2xl p-4 shadow-md" style={{ boxShadow: composerUrgency.glow }}>
@@ -197,7 +316,7 @@ const TaskManager: React.FC = () => {
               <input ref={inputRef} value={newText}
                 onChange={e => setNewText(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && newText.trim()) handleAdd(); if (e.key === 'Escape') { setComposing(false); setNewText(''); } }}
-                placeholder="What needs to be done?"
+                placeholder={composerPlaceholder[scope]}
                 className="flex-1 text-[15px] text-gray-800 font-medium placeholder:text-gray-300 outline-none bg-transparent" />
             </div>
             <div className="flex items-center gap-2">
@@ -232,9 +351,10 @@ const TaskManager: React.FC = () => {
         </div>
       )}
 
-      {/* Task list */}
+      {/* ── Task lists ── */}
       <div className="space-y-2">
-        {view === 'today' && (
+        {/* DAILY */}
+        {scope === 'daily' && dailyView === 'today' && (
           todayItems.length === 0 && !composing ? (
             <div className="text-center py-20 animate-fade-up">
               <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-50 to-violet-50 flex items-center justify-center mx-auto mb-4">
@@ -248,8 +368,8 @@ const TaskManager: React.FC = () => {
           )
         )}
 
-        {view === 'week' && getWeekDays().map(day => {
-          const items = tasksFor(day.key);
+        {scope === 'daily' && dailyView === 'week' && getWeekDays().map(day => {
+          const items = dailyTasksFor(day.key);
           if (items.length === 0 && day.key !== today) return null;
           const dayDone = items.filter(t => t.completed).length;
           return (
@@ -274,13 +394,43 @@ const TaskManager: React.FC = () => {
           );
         })}
 
-        {view === 'all' && (
-          allTasksSorted.length === 0 && !composing ? (
+        {scope === 'daily' && dailyView === 'all' && (
+          allDailyTasks.length === 0 && !composing ? (
             <div className="text-center py-20 animate-fade-up">
               <p className="text-[14px] text-gray-400">No tasks created yet</p>
             </div>
           ) : (
-            allTasksSorted.map((t, i) => renderTaskCard(t, i))
+            allDailyTasks.map((t, i) => renderTaskCard(t, i))
+          )
+        )}
+
+        {/* WEEKLY */}
+        {scope === 'weekly' && (
+          weekItems.length === 0 && !composing ? (
+            <div className="text-center py-20 animate-fade-up">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-cyan-50 to-blue-50 flex items-center justify-center mx-auto mb-4">
+                <Target size={32} className="text-blue-300" />
+              </div>
+              <p className="text-[16px] font-semibold text-gray-800">No weekly goals yet</p>
+              <p className="text-[13px] text-gray-400 mt-1">Plan what you want to accomplish this week</p>
+            </div>
+          ) : (
+            weekItems.map((t, i) => renderTaskCard(t, i))
+          )
+        )}
+
+        {/* MONTHLY */}
+        {scope === 'monthly' && (
+          monthItems.length === 0 && !composing ? (
+            <div className="text-center py-20 animate-fade-up">
+              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-50 to-fuchsia-50 flex items-center justify-center mx-auto mb-4">
+                <Calendar size={32} className="text-purple-300" />
+              </div>
+              <p className="text-[16px] font-semibold text-gray-800">No monthly goals yet</p>
+              <p className="text-[13px] text-gray-400 mt-1">Set big goals for the month ahead</p>
+            </div>
+          ) : (
+            monthItems.map((t, i) => renderTaskCard(t, i))
           )
         )}
       </div>
@@ -292,7 +442,7 @@ const TaskManager: React.FC = () => {
           transition-all active:scale-90 hover:shadow-2xl
           ${composing
             ? 'bg-gray-900 rotate-[135deg] shadow-gray-400/30'
-            : 'bg-gradient-to-br from-indigo-500 to-violet-500 shadow-indigo-300/50 hover:shadow-indigo-400/60'
+            : `bg-gradient-to-br ${SCOPE_HERO[scope]} shadow-indigo-300/50 hover:shadow-indigo-400/60`
           }`}>
         <Plus size={22} className="text-white" strokeWidth={2.5} />
       </button>

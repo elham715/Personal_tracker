@@ -102,6 +102,9 @@ export const createTaskValidator = [
   body('priority')
     .optional()
     .isIn(['high', 'medium', 'low']).withMessage('Invalid priority'),
+  body('scope')
+    .optional()
+    .isIn(['daily', 'weekly', 'monthly']).withMessage('Invalid scope'),
   body('createdDate')
     .optional()
     .matches(/^\d{4}-\d{2}-\d{2}$/).withMessage('Date must be in YYYY-MM-DD format'),

@@ -6,11 +6,12 @@ import { formatDate } from '../utils/calculateStreak.js';
 // @access  Private
 export const getTasks = async (req, res, next) => {
   try {
-    const { date, completed } = req.query;
+    const { date, completed, scope } = req.query;
 
     const filters = {};
     if (date) filters.date = date;
     if (completed !== undefined) filters.completed = completed === 'true';
+    if (scope) filters.scope = scope;
 
     const tasks = await Task.findByUser(req.user.id, filters);
 
@@ -72,7 +73,7 @@ export const getTask = async (req, res, next) => {
 export const createTask = async (req, res, next) => {
   try {
     console.log('Create task - Body:', req.body, 'User:', req.user.id);
-    const { text, priority, isHabit, habitId, createdDate, date } = req.body;
+    const { text, priority, isHabit, habitId, createdDate, date, scope } = req.body;
 
     const task = await Task.create({
       userId: req.user.id,
@@ -81,6 +82,7 @@ export const createTask = async (req, res, next) => {
       isHabit: isHabit || false,
       habitId: habitId || null,
       createdDate: date || createdDate || formatDate(),
+      scope: scope || 'daily',
     });
 
     console.log('Task created:', task.id);

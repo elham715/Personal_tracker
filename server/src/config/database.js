@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   text VARCHAR(500) NOT NULL,
   completed BOOLEAN DEFAULT FALSE,
   priority VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('high', 'medium', 'low')),
+  scope VARCHAR(10) DEFAULT 'daily' CHECK (scope IN ('daily', 'weekly', 'monthly')),
   is_habit BOOLEAN DEFAULT FALSE,
   habit_id UUID REFERENCES habits(id) ON DELETE SET NULL,
   created_date VARCHAR(10) NOT NULL,
@@ -66,6 +67,13 @@ CREATE TABLE IF NOT EXISTS tasks (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Add scope column for existing databases
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='scope') THEN
+    ALTER TABLE tasks ADD COLUMN scope VARCHAR(10) DEFAULT 'daily';
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_firebase_uid ON users(firebase_uid);
 CREATE INDEX IF NOT EXISTS idx_habits_user_id ON habits(user_id);
@@ -73,6 +81,7 @@ CREATE INDEX IF NOT EXISTS idx_habits_user_trashed ON habits(user_id, is_trashed
 CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_user_date ON tasks(user_id, created_date);
 CREATE INDEX IF NOT EXISTS idx_tasks_user_completed ON tasks(user_id, completed);
+CREATE INDEX IF NOT EXISTS idx_tasks_user_scope ON tasks(user_id, scope);
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
