@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
-import { useApp } from '@/context/AppContext';
-import { formatDate } from '@/utils/helpers';
-import { Check, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ChevronDown, BookOpen, Sparkles, Quote } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -30,6 +28,112 @@ type ContentBlock =
   | { type: 'example'; before: string; after: string }
   | { type: 'keypoint'; value: string }
   | { type: 'divider' };
+
+/* ═══════════════════════════════════════════════════════════════════════
+   100 ORIGINAL HABIT QUOTES — one shown per day, rotating daily
+   ═══════════════════════════════════════════════════════════════════════ */
+const HABIT_QUOTES: string[] = [
+  'Your future is hidden inside today\'s habits.',
+  'Small habits quietly shape big destinies.',
+  'Discipline is simply habit repeated daily.',
+  'Motivation starts; habits sustain.',
+  'Success becomes easy when habits become automatic.',
+  'Habits turn effort into identity.',
+  'What you repeat, you become.',
+  'Good habits compound; bad ones accumulate interest too.',
+  'Habits decide your default direction in life.',
+  'Consistency beats intensity every time.',
+  'Habits are votes for the person you\'re becoming.',
+  'You don\'t rise to goals — you fall to habits.',
+  'Daily actions whisper louder than big intentions.',
+  'A tiny habit today prevents regret tomorrow.',
+  'Habit strength grows from repetition, not perfection.',
+  'Excellence is just refined habit.',
+  'Your routine predicts your results.',
+  'Habits make success feel normal.',
+  'Change habits, change trajectory.',
+  'Automatic good choices create extraordinary lives.',
+  'Habits are the architecture of character.',
+  'Identity grows where habits repeat.',
+  'Strong habits reduce weak moments.',
+  'The hardest habits become the easiest with time.',
+  'Habit first, confidence later.',
+  'Systems create habits; habits create results.',
+  'Progress hides inside repetition.',
+  'Consistency quietly outperforms talent.',
+  'Habits simplify decision-making.',
+  'The brain loves what it practices often.',
+  'Habit change is identity change in disguise.',
+  'Habits are the silent drivers of behavior.',
+  'Make habits simple and they\'ll stay.',
+  'Environment shapes habits more than willpower.',
+  'Good habits reduce stress before stress arrives.',
+  'Habit strength comes from ease, not struggle.',
+  'Repetition removes resistance.',
+  'Habits convert chaos into order.',
+  'A habit delayed is often a habit abandoned.',
+  'Tiny improvements accumulate into transformation.',
+  'Habits build resilience without drama.',
+  'Daily structure frees mental energy.',
+  'A habit once built becomes self-sustaining.',
+  'Small discipline prevents big problems.',
+  'Habits are invisible until results appear.',
+  'Change the routine, change the outcome.',
+  'Habit consistency creates emotional stability.',
+  'Routine protects focus.',
+  'Habits outlast motivation.',
+  'Habit quality determines life quality.',
+  'You shape habits, then habits shape you.',
+  'Habit repetition builds quiet confidence.',
+  'Long-term success loves boring routines.',
+  'Habits eliminate unnecessary struggle.',
+  'Identity solidifies through repeated action.',
+  'Habits reduce the cost of success.',
+  'A system of habits beats bursts of effort.',
+  'Habit friction predicts failure or success.',
+  'Good habits feel small but act huge.',
+  'The best habits require minimal willpower.',
+  'Habit momentum beats sudden inspiration.',
+  'Daily structure protects long-term dreams.',
+  'Habits grow stronger when tied to identity.',
+  'A clear system makes habits inevitable.',
+  'Habit tracking strengthens commitment.',
+  'Missing once is human; quitting is habit loss.',
+  'Habits thrive in supportive environments.',
+  'Consistent effort removes fear of failure.',
+  'Habit loops govern most behavior.',
+  'Automatic actions free creative thinking.',
+  'Habits turn ambition into routine.',
+  'Every habit casts a vote for your future.',
+  'Repetition builds mastery invisibly.',
+  'Habits stabilize performance under stress.',
+  'Small habits reduce big regrets.',
+  'Strong habits require fewer decisions.',
+  'Good routines simplify complex goals.',
+  'Habit quality reflects self-respect.',
+  'Habits protect you when motivation fades.',
+  'Habit discipline grows self-trust.',
+  'Consistent action builds silent power.',
+  'Habits determine baseline performance.',
+  'Improvement hides in ordinary repetition.',
+  'Habit alignment creates inner peace.',
+  'Long-term consistency beats short-term brilliance.',
+  'Habits make progress predictable.',
+  'Structure liberates creativity.',
+  'Habit refinement leads to mastery.',
+  'Good habits reduce emotional volatility.',
+  'Habit commitment beats temporary excitement.',
+  'Routine builds reliability.',
+  'Habits create stability during chaos.',
+  'A habit mastered becomes effortless.',
+  'Habit direction matters more than speed.',
+  'Progress begins where consistency starts.',
+  'Habit patience multiplies results.',
+  'Repetition rewires potential into ability.',
+  'Habit alignment produces clarity.',
+  'A disciplined habit life compounds success.',
+  'Ultimately, your habits quietly write your story.',
+];
 
 const MANUAL_SECTIONS: ManualSection[] = [
   /* ── 1. The Power of Tiny Changes ── */
@@ -347,11 +451,16 @@ const MANUAL_SECTIONS: ManualSection[] = [
    ═══════════════════════════════════════════════════════════════════════ */
 
 const Habits: React.FC = () => {
-  const { habits, toggleHabitDate } = useApp();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [showManual, setShowManual] = useState(false);
-  const today = formatDate();
+
+  const dailyQuote = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    const idx = dayOfYear % HABIT_QUOTES.length;
+    return { text: HABIT_QUOTES[idx], number: idx + 1 };
+  }, []);
 
   const toggleSection = (id: string) =>
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
@@ -462,94 +571,45 @@ const Habits: React.FC = () => {
         <Link to="/habit-manager" className="text-[13px] text-indigo-600 font-medium">+ New</Link>
       </div>
 
-      {/* ── Habit cards ── */}
-      {habits.length > 0 ? (
-        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 stagger">
-          {habits.map(habit => {
-            const done = habit.completedDates.includes(today);
-            const open = expandedId === habit.id;
+      {/* ── Daily Habit Quote ── */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 rounded-2xl p-6 lg:p-8 shadow-xl shadow-indigo-900/20 animate-fade-up">
+        {/* Decorative background elements */}
+        <div className="absolute top-4 right-5 text-white/[0.04] text-[100px] lg:text-[140px] font-serif leading-none select-none pointer-events-none">"</div>
+        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl" />
+        <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/3 w-20 h-20 bg-pink-500/10 rounded-full blur-2xl" />
 
-            return (
-              <div key={habit.id} className="bg-white rounded-xl overflow-hidden animate-fade-up">
-                <div className="flex items-center gap-3 p-3.5">
-                  <button onClick={() => toggleHabitDate(habit.id, today)} className="flex-shrink-0">
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
-                      done ? 'bg-indigo-600' : 'bg-gray-100'
-                    }`}>
-                      {done ? <Check size={16} className="text-white" strokeWidth={3} /> : <span className="text-base">{habit.icon}</span>}
-                    </div>
-                  </button>
-
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-[14px] font-semibold text-gray-900 truncate">{habit.name}</h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[11px] text-gray-400">{habit.category}</span>
-                      {(habit.streak || 0) > 0 && <span className="text-[11px] text-orange-500 font-medium">{habit.streak}d streak</span>}
-                    </div>
-                  </div>
-
-                  <button onClick={() => setExpandedId(open ? null : habit.id)} className="p-1">
-                    {open ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                  </button>
-                </div>
-
-                {open && (
-                  <div className="px-3.5 pb-3.5 pt-0 border-t border-gray-50 animate-scale-in">
-                    <div className="grid grid-cols-3 gap-2 mt-3 mb-3">
-                      {[
-                        { v: habit.streak, l: 'Streak' },
-                        { v: habit.completedDates.length, l: 'Total' },
-                        { v: habit.target, l: 'Goal' },
-                      ].map(s => (
-                        <div key={s.l} className="bg-gray-50 rounded-lg p-2 text-center">
-                          <p className="text-[16px] font-bold text-gray-900">{s.v}</p>
-                          <p className="text-[10px] text-gray-400">{s.l}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {habit.completedDates.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {habit.completedDates.slice(-5).reverse().map((d, i) => (
-                          <span key={i} className="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">
-                            {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div>
-                      <div className="flex justify-between text-[10px] text-gray-400 mb-1">
-                        <span>7-day</span>
-                        <span>{Math.round((habit.completedDates.filter(d => {
-                          const dt = new Date(d); const wa = new Date(); wa.setDate(wa.getDate() - 7);
-                          return dt >= wa;
-                        }).length / 7) * 100)}%</span>
-                      </div>
-                      <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-500 rounded-full transition-all" style={{
-                          width: `${Math.min((habit.completedDates.filter(d => {
-                            const dt = new Date(d); const wa = new Date(); wa.setDate(wa.getDate() - 7);
-                            return dt >= wa;
-                          }).length / 7) * 100, 100)}%`
-                        }} />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        {/* Top label */}
+        <div className="flex items-center gap-2.5 mb-5 relative z-10">
+          <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+            <Sparkles size={16} className="text-white" />
+          </div>
+          <div>
+            <p className="text-[10px] text-indigo-300/70 uppercase tracking-[0.2em] font-bold">Daily Wisdom</p>
+            <p className="text-[11px] text-white/40">Quote #{dailyQuote.number} of {HABIT_QUOTES.length}</p>
+          </div>
         </div>
-      ) : (
-        <div className="bg-white rounded-2xl p-8 text-center animate-fade-up">
-          <p className="text-3xl mb-2">🎯</p>
-          <p className="text-[14px] font-semibold text-gray-900 mb-1">No habits yet</p>
-          <Link to="/habit-manager" className="inline-block text-[13px] bg-indigo-600 text-white font-medium px-4 py-2 rounded-lg mt-3">
-            Create Habit
-          </Link>
+
+        {/* Quote icon */}
+        <div className="mb-4 relative z-10">
+          <Quote size={22} className="text-indigo-400/40" />
         </div>
-      )}
+
+        {/* Quote text */}
+        <p className="text-[18px] lg:text-[22px] font-semibold text-white/95 leading-relaxed relative z-10 tracking-[-0.01em]">
+          {dailyQuote.text}
+        </p>
+
+        {/* Bottom accent */}
+        <div className="mt-6 flex items-center gap-3 relative z-10">
+          <div className="h-px flex-1 bg-gradient-to-r from-white/20 to-transparent" />
+          <span className="text-[10px] text-white/30 font-medium flex items-center gap-1.5">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400/60" />
+            New quote every day
+          </span>
+          <div className="h-px flex-1 bg-gradient-to-l from-white/20 to-transparent" />
+        </div>
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════
          📘 ATOMIC HABITS MANUAL
