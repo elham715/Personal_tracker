@@ -101,21 +101,7 @@ const Everyday: React.FC = () => {
                pct: (done / habits.length) * 100 };
     });
 
-    /* ── boxplot quartiles ── */
-    const pcts = dailyProgress.map(d => d.pct).sort((a, b) => a - b);
-    const q = (arr: number[], p: number) => {
-      if (arr.length <= 1) return arr[0] ?? 0;
-      const idx = (arr.length - 1) * p;
-      const lo = Math.floor(idx);
-      return arr[lo] + (arr[Math.ceil(idx)] - arr[lo]) * (idx - lo);
-    };
-    const boxplot = {
-      min: pcts[0] ?? 0, q1: q(pcts, 0.25), median: q(pcts, 0.5),
-      q3: q(pcts, 0.75), max: pcts[pcts.length - 1] ?? 0,
-      avg: pcts.length ? pcts.reduce((a, b) => a + b, 0) / pcts.length : 0,
-    };
-
-    return { habitStats, dailyProgress, boxplot };
+    return { habitStats, dailyProgress };
   }, [habits, dates]);
 
   /* ── SVG line chart ── */
@@ -172,54 +158,6 @@ const Everyday: React.FC = () => {
             )}
           </g>
         ))}
-      </svg>
-    );
-  };
-
-  /* ── SVG boxplot ── */
-  const renderBoxplot = () => {
-    if (!analytics) return null;
-    const { boxplot: bp, dailyProgress } = analytics;
-    const W = 380, H = 70;
-    const PAD = { l: 38, r: 15, t: 15, b: 20 };
-    const pw = W - PAD.l - PAD.r;
-    const x = (v: number) => PAD.l + (v / 100) * pw;
-    const cy = PAD.t + (H - PAD.t - PAD.b) / 2;
-    const boxH = 24;
-
-    return (
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-        {/* axis ticks */}
-        {[0, 25, 50, 75, 100].map(v => (
-          <g key={v}>
-            <line x1={x(v)} y1={cy - boxH / 2 - 4} x2={x(v)} y2={cy + boxH / 2 + 4}
-              stroke="#f3f4f6" strokeWidth="0.7" />
-            <text x={x(v)} y={H - 3} textAnchor="middle" fill="#9ca3af" fontSize="7.5">{v}%</text>
-          </g>
-        ))}
-        {/* whisker line */}
-        <line x1={x(bp.min)} y1={cy} x2={x(bp.max)} y2={cy}
-          stroke="#6366f1" strokeWidth="1.5" />
-        {/* whisker caps */}
-        <line x1={x(bp.min)} y1={cy - 8} x2={x(bp.min)} y2={cy + 8}
-          stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" />
-        <line x1={x(bp.max)} y1={cy - 8} x2={x(bp.max)} y2={cy + 8}
-          stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" />
-        {/* box Q1–Q3 */}
-        <rect x={x(bp.q1)} y={cy - boxH / 2} width={Math.max(x(bp.q3) - x(bp.q1), 2)} height={boxH}
-          rx="5" fill="#eef2ff" stroke="#6366f1" strokeWidth="1.5" />
-        {/* median line */}
-        <line x1={x(bp.median)} y1={cy - boxH / 2} x2={x(bp.median)} y2={cy + boxH / 2}
-          stroke="#4338ca" strokeWidth="2.5" strokeLinecap="round" />
-        {/* individual day dots */}
-        {dailyProgress.map((d, i) => (
-          <circle key={i} cx={x(d.pct)} cy={cy + (i % 3 - 1) * 3} r="2.5"
-            fill="#6366f1" fillOpacity="0.25" />
-        ))}
-        {/* mean diamond */}
-        <polygon
-          points={`${x(bp.avg)},${cy - 6} ${x(bp.avg) + 5},${cy} ${x(bp.avg)},${cy + 6} ${x(bp.avg) - 5},${cy}`}
-          fill="#f59e0b" stroke="#d97706" strokeWidth="1" />
       </svg>
     );
   };
@@ -378,45 +316,7 @@ const Everyday: React.FC = () => {
             {renderLineChart()}
           </div>
 
-          {/* ── Boxplot: Completion Distribution ── */}
-          <div className="mt-5 bg-white rounded-2xl p-4 shadow-sm mb-4 animate-fade-up" style={{ animationDelay: '300ms' }}>
-            <h2 className="text-[15px] font-bold text-gray-900 mb-1 flex items-center gap-1.5">
-              📊 Completion Distribution
-            </h2>
-            <p className="text-[11px] text-gray-400 mb-2">Spread of daily completion rates over 14 days</p>
-            {renderBoxplot()}
-            <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-gray-400">
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-3 h-3 rounded-sm bg-indigo-50 border border-indigo-500" /> Q1–Q3 box
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-0.5 h-3 bg-indigo-900 rounded" /> Median
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block w-2.5 h-2.5 bg-amber-400 border border-amber-600"
-                  style={{ transform: 'rotate(45deg)' }} /> Mean
-              </span>
-            </div>
-            {/* summary numbers */}
-            <div className="flex justify-center gap-4 mt-3 text-[11px]">
-              <div className="text-center">
-                <span className="text-gray-400 block">Min</span>
-                <span className="font-bold text-gray-700">{Math.round(analytics.boxplot.min)}%</span>
-              </div>
-              <div className="text-center">
-                <span className="text-gray-400 block">Median</span>
-                <span className="font-bold text-indigo-600">{Math.round(analytics.boxplot.median)}%</span>
-              </div>
-              <div className="text-center">
-                <span className="text-gray-400 block">Mean</span>
-                <span className="font-bold text-amber-500">{Math.round(analytics.boxplot.avg)}%</span>
-              </div>
-              <div className="text-center">
-                <span className="text-gray-400 block">Max</span>
-                <span className="font-bold text-green-600">{Math.round(analytics.boxplot.max)}%</span>
-              </div>
-            </div>
-          </div>
+
         </>
       )}
     </div>
