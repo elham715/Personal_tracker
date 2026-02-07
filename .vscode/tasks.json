@@ -81,6 +81,26 @@
 			"label": "Git Diff",
 			"type": "shell",
 			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2 && git add -A && git diff --cached --stat"
+		},
+		{
+			"label": "Git Diff Full",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2 && git diff --cached --stat | tail -20"
+		},
+		{
+			"label": "Git Push",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2 && git commit -m 'Migrate from MongoDB to PostgreSQL (Neon)' && git push origin main"
+		},
+		{
+			"label": "Check Deploy",
+			"type": "shell",
+			"command": "curl -s https://personal-tracker-dun.vercel.app/ | head -c 300"
+		},
+		{
+			"label": "Git Push 2",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2 && git add -A && git commit -m 'Fix serverless deploy: inline schema, add forgot password' && git push origin main"
 		}
 	]
 }
