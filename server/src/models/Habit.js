@@ -1,120 +1,129 @@
-import mongoose from 'mongoose';
+import { pool, toCamelCase, toCamelCaseArray } from '../config/database.js';
 
-const habitSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-    index: true
+const Habit = {
+  // Get all habits for a user (active or trashed)
+  async findByUser(userId, isTrashed = false) {
+    const { rows } = await pool.query(
+      'SELECT * FROM habits WHERE user_id = $1 AND is_trashed = $2 ORDER BY created_at DESC',
+      [userId, isTrashed]
+    );
+    return toCamelCaseArray(rows);
   },
-  name: {
-    type: String,
-    required: [true, 'Please provide a habit name'],
-    trim: true,
-    maxlength: [100, 'Habit name cannot be more than 100 characters']
-  },
-  icon: {
-    type: String,
-    default: '✨',
-    maxlength: [10, 'Icon cannot be more than 10 characters']
-  },
-  category: {
-    type: String,
-    required: [true, 'Please provide a category'],
-    enum: ['Health', 'Fitness', 'Learning', 'Productivity', 'Mindfulness', 'Creativity', 'Social', 'Finance', 'Other'],
-    default: 'Health'
-  },
-  color: {
-    type: String,
-    enum: ['purple', 'blue', 'green', 'orange', 'pink', 'cyan'],
-    default: 'purple'
-  },
-  target: {
-    type: Number,
-    default: 1,
-    min: [1, 'Target must be at least 1']
-  },
-  streak: {
-    type: Number,
-    default: 0,
-    min: 0
-  },
-  completedDates: [{
-    type: String, // Store as 'YYYY-MM-DD' format
-    validate: {
-      validator: function(v) {
-        return /^\d{4}-\d{2}-\d{2}$/.test(v);
-      },
-      message: 'Date must be in YYYY-MM-DD format'
-    }
-  }],
-  isTrashed: {
-    type: Boolean,
-    default: false,
-    index: true
-  },
-  trashedAt: {
-    type: Date,
-    default: null
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-}, {
-  timestamps: true
-});
 
-// Compound index for user queries
-habitSchema.index({ user: 1, isTrashed: 1 });
-habitSchema.index({ user: 1, createdAt: -1 });
+  // Find a single habit by id and userId
+  async findOne(id, userId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM habits WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return toCamelCase(rows[0]);
+  },
 
-// Virtual for total check-ins
-habitSchema.virtual('totalCheckIns').get(function() {
-  return this.completedDates.length;
-});
+  // Find an active (non-trashed) habit
+  async findOneActive(id, userId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM habits WHERE id = $1 AND user_id = $2 AND is_trashed = false',
+      [id, userId]
+    );
+    return toCamelCase(rows[0]);
+  },
 
-// Method to toggle completion for a date
-habitSchema.methods.toggleDate = function(dateString) {
-  const index = this.completedDates.indexOf(dateString);
-  
-  if (index > -1) {
-    // Remove date (undo)
-    this.completedDates.splice(index, 1);
-  } else {
-    // Add date (complete)
-    this.completedDates.push(dateString);
-  }
-  
-  return this;
+  // Find a trashed habit
+  async findOneTrashed(id, userId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM habits WHERE id = $1 AND user_id = $2 AND is_trashed = true',
+      [id, userId]
+    );
+    return toCamelCase(rows[0]);
+  },
+
+  // Create a new habit
+  async create({ userId, name, icon, category, color, target }) {
+    const { rows } = await pool.query(
+      `INSERT INTO habits (user_id, name, icon, category, color, target, streak, completed_dates)
+       VALUES ($1, $2, $3, $4, $5, $6, 0, '{}')
+       RETURNING *`,
+      [userId, name, icon || '✨', category || 'Health', color || 'purple', target || 1]
+    );
+    return toCamelCase(rows[0]);
+  },
+
+  // Update habit fields
+  async update(id, userId, { name, icon, category, color, target }) {
+    const { rows } = await pool.query(
+      `UPDATE habits SET
+        name = COALESCE($1, name),
+        icon = COALESCE($2, icon),
+        category = COALESCE($3, category),
+        color = COALESCE($4, color),
+        target = COALESCE($5, target)
+       WHERE id = $6 AND user_id = $7
+       RETURNING *`,
+      [name, icon, category, color, target, id, userId]
+    );
+    return toCamelCase(rows[0]);
+  },
+
+  // Toggle a date in completedDates array
+  async toggleDate(id, date) {
+    const { rows: current } = await pool.query(
+      'SELECT completed_dates FROM habits WHERE id = $1',
+      [id]
+    );
+    if (!current[0]) return null;
+
+    const dates = current[0].completed_dates || [];
+    const exists = dates.includes(date);
+
+    const query = exists
+      ? 'UPDATE habits SET completed_dates = array_remove(completed_dates, $1) WHERE id = $2 RETURNING *'
+      : 'UPDATE habits SET completed_dates = array_append(completed_dates, $1) WHERE id = $2 RETURNING *';
+
+    const { rows } = await pool.query(query, [date, id]);
+    return toCamelCase(rows[0]);
+  },
+
+  // Update streak value
+  async updateStreak(id, streak) {
+    const { rows } = await pool.query(
+      'UPDATE habits SET streak = $1 WHERE id = $2 RETURNING *',
+      [streak, id]
+    );
+    return toCamelCase(rows[0]);
+  },
+
+  // Move habit to trash
+  async moveToTrash(id) {
+    const { rows } = await pool.query(
+      'UPDATE habits SET is_trashed = true, trashed_at = NOW() WHERE id = $1 RETURNING *',
+      [id]
+    );
+    return toCamelCase(rows[0]);
+  },
+
+  // Restore habit from trash (clears history)
+  async restore(id) {
+    const { rows } = await pool.query(
+      `UPDATE habits SET is_trashed = false, trashed_at = NULL, completed_dates = '{}', streak = 0
+       WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    return toCamelCase(rows[0]);
+  },
+
+  // Permanently delete a habit
+  async deleteOne(id) {
+    await pool.query('DELETE FROM habits WHERE id = $1', [id]);
+  },
+
+  // Delete all trashed habits for a user
+  async deleteManyTrashed(userId) {
+    const result = await pool.query(
+      'DELETE FROM habits WHERE user_id = $1 AND is_trashed = true',
+      [userId]
+    );
+    return result.rowCount;
+  },
 };
-
-// Method to move to trash
-habitSchema.methods.moveToTrash = function() {
-  this.isTrashed = true;
-  this.trashedAt = new Date();
-  return this;
-};
-
-// Method to restore from trash
-habitSchema.methods.restore = function() {
-  this.isTrashed = false;
-  this.trashedAt = null;
-  // Clear completion history when restoring
-  this.completedDates = [];
-  this.streak = 0;
-  return this;
-};
-
-// Clean up JSON response
-habitSchema.methods.toJSON = function() {
-  const habit = this.toObject({ virtuals: true });
-  delete habit.__v;
-  habit.id = habit._id;
-  delete habit._id;
-  return habit;
-};
-
-const Habit = mongoose.model('Habit', habitSchema);
 
 export default Habit;

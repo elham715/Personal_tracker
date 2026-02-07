@@ -1,0 +1,86 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Verify Imports",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && node verify-imports.mjs"
+		},
+		{
+			"label": "Frontend Type Check",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/client && npx tsc --noEmit 2>&1 | head -30"
+		},
+		{
+			"label": "Cleanup",
+			"type": "shell",
+			"command": "rm /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server/verify-imports.mjs 2>/dev/null; echo done"
+		},
+		{
+			"label": "Check env",
+			"type": "shell",
+			"command": "cat /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server/.env 2>/dev/null || echo NO_ENV_FILE"
+		},
+		{
+			"label": "Start Server PG",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && node src/server.js 2>&1 | head -30"
+		},
+		{
+			"label": "Start Server PG2",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && node src/server.js 2>&1 | head -20"
+		},
+		{
+			"label": "Start Server PG3",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && node src/server.js 2>&1 | head -40"
+		},
+		{
+			"label": "Check DB URL",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && node -e 'import(\"dotenv\").then(d => { d.config(); console.log(\"DATABASE_URL:\", process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0,50)+\"...\" : \"NOT SET\"); })'"
+		},
+		{
+			"label": "Start Server PG4",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && node src/server.js 2>&1 | head -25"
+		},
+		{
+			"label": "Start Server PG5",
+			"type": "shell",
+			"command": "lsof -ti:5001 | xargs kill -9 2>/dev/null; sleep 1; cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && node src/server.js 2>&1 | head -25"
+		},
+		{
+			"label": "Start Server PG6",
+			"type": "shell",
+			"command": "lsof -ti:5001 | xargs kill -9 2>/dev/null; sleep 1; cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && timeout 10 node src/server.js 2>&1 || true"
+		},
+		{
+			"label": "Test DB Connect",
+			"type": "shell",
+			"command": "lsof -ti:5001 | xargs kill -9 2>/dev/null; sleep 1; cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && node -e 'import(\"dotenv\").then(d=>{d.config();return import(\"./src/config/database.js\")}).then(m=>m.default()).then(()=>{console.log(\"ALL DONE\");process.exit(0)}).catch(e=>{console.error(e);process.exit(1)})'"
+		},
+		{
+			"label": "Server PostgreSQL",
+			"type": "shell",
+			"command": "lsof -ti:5001 | xargs kill -9 2>/dev/null; sleep 1; cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2/server && node src/server.js",
+			"isBackground": true
+		},
+		{
+			"label": "Git Status",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2 && git add -A && git status"
+		},
+		{
+			"label": "Git Status Full",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2 && git status --short"
+		},
+		{
+			"label": "Git Diff",
+			"type": "shell",
+			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2 && git add -A && git diff --cached --stat"
+		}
+	]
+}

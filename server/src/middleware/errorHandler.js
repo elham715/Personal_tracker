@@ -2,30 +2,38 @@
 export const errorHandler = (err, req, res, next) => {
   console.error('Error:', err);
 
-  // Mongoose validation error
-  if (err.name === 'ValidationError') {
-    const errors = Object.values(err.errors).map(e => e.message);
-    return res.status(400).json({
-      success: false,
-      message: 'Validation Error',
-      errors
-    });
-  }
-
-  // Mongoose duplicate key error
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyPattern)[0];
+  // PostgreSQL unique constraint violation
+  if (err.code === '23505') {
+    const detail = err.detail || '';
+    const match = detail.match(/Key \((.+?)\)/);
+    const field = match ? match[1] : 'field';
     return res.status(400).json({
       success: false,
       message: `${field.charAt(0).toUpperCase() + field.slice(1)} already exists`
     });
   }
 
-  // Mongoose cast error (invalid ObjectId)
-  if (err.name === 'CastError') {
-    return res.status(404).json({
+  // PostgreSQL foreign key violation
+  if (err.code === '23503') {
+    return res.status(400).json({
       success: false,
-      message: 'Resource not found'
+      message: 'Referenced resource not found'
+    });
+  }
+
+  // PostgreSQL check constraint violation
+  if (err.code === '23514') {
+    return res.status(400).json({
+      success: false,
+      message: 'Validation Error: constraint check failed'
+    });
+  }
+
+  // PostgreSQL not null violation
+  if (err.code === '23502') {
+    return res.status(400).json({
+      success: false,
+      message: `${err.column || 'Field'} is required`
     });
   }
 

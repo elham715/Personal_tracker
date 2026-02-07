@@ -26,7 +26,7 @@ export const protect = async (req, res, next) => {
           const decodedToken = await verifyFirebaseToken(token);
           
           // Find or create user based on Firebase UID
-          let user = await User.findOne({ firebaseUid: decodedToken.uid });
+          let user = await User.findByFirebaseUid(decodedToken.uid);
           
           if (!user) {
             // Create new user from Firebase data
@@ -50,17 +50,18 @@ export const protect = async (req, res, next) => {
         }
       }
       
-      // Fallback to JWT token (for backward compatibility)
+      // JWT token authentication
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
+      const user = await User.findById(decoded.id);
 
-      if (!req.user) {
+      if (!user) {
         return res.status(401).json({
           success: false,
           message: 'User not found'
         });
       }
 
+      req.user = user;
       next();
     } catch (error) {
       console.error('❌ Auth error:', error.message);

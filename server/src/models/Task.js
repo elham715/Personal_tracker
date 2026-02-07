@@ -1,77 +1,114 @@
-import mongoose from 'mongoose';
+import { pool, toCamelCase, toCamelCaseArray } from '../config/database.js';
 
-const taskSchema = new mongoose.Schema({
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-    index: true
-  },
-  text: {
-    type: String,
-    required: [true, 'Please provide task text'],
-    trim: true,
-    maxlength: [500, 'Task text cannot be more than 500 characters']
-  },
-  completed: {
-    type: Boolean,
-    default: false
-  },
-  priority: {
-    type: String,
-    enum: ['high', 'medium', 'low'],
-    default: 'medium'
-  },
-  isHabit: {
-    type: Boolean,
-    default: false
-  },
-  habitId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Habit',
-    default: null
-  },
-  createdDate: {
-    type: String, // Store as 'YYYY-MM-DD' format
-    required: true,
-    validate: {
-      validator: function(v) {
-        return /^\d{4}-\d{2}-\d{2}$/.test(v);
-      },
-      message: 'Date must be in YYYY-MM-DD format'
-    }
-  },
-  completedAt: {
-    type: Date,
-    default: null
-  }
-}, {
-  timestamps: true
-});
-
-// Compound indexes for efficient queries
-taskSchema.index({ user: 1, createdDate: -1 });
-taskSchema.index({ user: 1, completed: 1 });
-taskSchema.index({ user: 1, habitId: 1 });
-
-// Method to toggle completion
-taskSchema.methods.toggle = function() {
-  this.completed = !this.completed;
-  this.completedAt = this.completed ? new Date() : null;
-  return this;
-};
-
-// Clean up JSON response
-taskSchema.methods.toJSON = function() {
-  const task = this.toObject();
-  delete task.__v;
-  task.id = task._id;
-  delete task._id;
+// Helper to format a task row for API response
+const formatTask = (row) => {
+  const task = toCamelCase(row);
+  if (!task) return null;
   // Add date alias for frontend compatibility
   task.date = task.createdDate;
   return task;
 };
 
-const Task = mongoose.model('Task', taskSchema);
+const formatTaskArray = (rows) => {
+  return rows.map(row => formatTask(row));
+};
+
+const Task = {
+  // Get all tasks for a user with optional filters
+  async findByUser(userId, filters = {}) {
+    let query = 'SELECT * FROM tasks WHERE user_id = $1';
+    const params = [userId];
+    let paramIdx = 2;
+
+    if (filters.date) {
+      query += ` AND created_date = $${paramIdx}`;
+      params.push(filters.date);
+      paramIdx++;
+    }
+
+    if (filters.completed !== undefined) {
+      query += ` AND completed = $${paramIdx}`;
+      params.push(filters.completed);
+      paramIdx++;
+    }
+
+    query += ' ORDER BY created_date DESC, created_at DESC';
+
+    const { rows } = await pool.query(query, params);
+    return formatTaskArray(rows);
+  },
+
+  // Get tasks for a specific date
+  async findByDate(userId, date) {
+    const { rows } = await pool.query(
+      'SELECT * FROM tasks WHERE user_id = $1 AND created_date = $2 ORDER BY created_at ASC',
+      [userId, date]
+    );
+    return formatTaskArray(rows);
+  },
+
+  // Find a single task
+  async findOne(id, userId) {
+    const { rows } = await pool.query(
+      'SELECT * FROM tasks WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return formatTask(rows[0]);
+  },
+
+  // Create a new task
+  async create({ userId, text, priority, isHabit, habitId, createdDate }) {
+    const { rows } = await pool.query(
+      `INSERT INTO tasks (user_id, text, priority, is_habit, habit_id, created_date, completed)
+       VALUES ($1, $2, $3, $4, $5, $6, false)
+       RETURNING *`,
+      [userId, text, priority || 'medium', isHabit || false, habitId || null, createdDate]
+    );
+    return formatTask(rows[0]);
+  },
+
+  // Update a task
+  async update(id, userId, { text, priority, completed }) {
+    // Get current task first
+    const current = await this.findOne(id, userId);
+    if (!current) return null;
+
+    const newText = text !== undefined ? text : current.text;
+    const newPriority = priority !== undefined ? priority : current.priority;
+    const newCompleted = completed !== undefined ? completed : current.completed;
+    const newCompletedAt = completed !== undefined ? (completed ? new Date() : null) : current.completedAt;
+
+    const { rows } = await pool.query(
+      `UPDATE tasks SET text = $1, priority = $2, completed = $3, completed_at = $4
+       WHERE id = $5 AND user_id = $6
+       RETURNING *`,
+      [newText, newPriority, newCompleted, newCompletedAt, id, userId]
+    );
+    return formatTask(rows[0]);
+  },
+
+  // Toggle task completion
+  async toggle(id, userId) {
+    const { rows } = await pool.query(
+      `UPDATE tasks SET
+        completed = NOT completed,
+        completed_at = CASE WHEN NOT completed THEN NOW() ELSE NULL END
+       WHERE id = $1 AND user_id = $2
+       RETURNING *`,
+      [id, userId]
+    );
+    if (!rows[0]) return null;
+    return formatTask(rows[0]);
+  },
+
+  // Delete a task
+  async deleteOne(id, userId) {
+    const result = await pool.query(
+      'DELETE FROM tasks WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return result.rowCount > 0;
+  },
+};
 
 export default Task;

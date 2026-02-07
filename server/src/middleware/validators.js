@@ -125,7 +125,7 @@ export const updateTaskValidator = [
 // ID validator
 export const idValidator = [
   param('id')
-    .isMongoId().withMessage('Invalid ID format'),
+    .isUUID().withMessage('Invalid ID format'),
   validate
 ];
 

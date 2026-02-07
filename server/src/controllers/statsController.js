@@ -7,37 +7,38 @@ import { formatDate } from '../utils/calculateStreak.js';
 // @access  Private
 export const getStats = async (req, res, next) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
     const today = formatDate();
 
     // Get all active habits
-    const habits = await Habit.find({ user: userId, isTrashed: false });
+    const habits = await Habit.findByUser(userId, false);
 
     // Get all tasks
-    const allTasks = await Task.find({ user: userId });
-    const todayTasks = await Task.find({ user: userId, createdDate: today });
+    const allTasks = await Task.findByUser(userId);
+    const todayTasks = await Task.findByUser(userId, { date: today });
 
     // Calculate statistics
     const stats = {
       // Habit stats
       totalHabits: habits.length,
-      habitsCompletedToday: habits.filter(h => h.completedDates.includes(today)).length,
+      habitsCompletedToday: habits.filter((h) => h.completedDates.includes(today)).length,
       totalCheckIns: habits.reduce((sum, h) => sum + h.completedDates.length, 0),
       bestStreak: habits.reduce((max, h) => Math.max(max, h.streak), 0),
-      averageStreak: habits.length > 0 
-        ? Math.round(habits.reduce((sum, h) => sum + h.streak, 0) / habits.length) 
-        : 0,
+      averageStreak:
+        habits.length > 0
+          ? Math.round(habits.reduce((sum, h) => sum + h.streak, 0) / habits.length)
+          : 0,
 
       // Task stats
       totalTasks: allTasks.length,
-      completedTasks: allTasks.filter(t => t.completed).length,
-      pendingTasks: allTasks.filter(t => !t.completed).length,
+      completedTasks: allTasks.filter((t) => t.completed).length,
+      pendingTasks: allTasks.filter((t) => !t.completed).length,
       todayTasks: todayTasks.length,
-      todayCompletedTasks: todayTasks.filter(t => t.completed).length,
+      todayCompletedTasks: todayTasks.filter((t) => t.completed).length,
 
       // Activity stats
-      activeDays: new Set(habits.flatMap(h => h.completedDates)).size,
-      
+      activeDays: new Set(habits.flatMap((h) => h.completedDates)).size,
+
       // Category breakdown
       categoryBreakdown: habits.reduce((acc, habit) => {
         acc[habit.category] = (acc[habit.category] || 0) + 1;
@@ -51,7 +52,7 @@ export const getStats = async (req, res, next) => {
           const date = new Date();
           date.setDate(date.getDate() - i);
           const dateStr = formatDate(date);
-          const count = habits.filter(h => h.completedDates.includes(dateStr)).length;
+          const count = habits.filter((h) => h.completedDates.includes(dateStr)).length;
           last7Days.push({ date: dateStr, completions: count });
         }
         return last7Days;
@@ -61,17 +62,17 @@ export const getStats = async (req, res, next) => {
       topStreaks: habits
         .sort((a, b) => b.streak - a.streak)
         .slice(0, 5)
-        .map(h => ({
-          habitId: h._id,
+        .map((h) => ({
+          habitId: h.id,
           name: h.name,
           icon: h.icon,
-          streak: h.streak
-        }))
+          streak: h.streak,
+        })),
     };
 
     res.status(200).json({
       success: true,
-      data: stats
+      data: stats,
     });
   } catch (error) {
     next(error);
@@ -83,25 +84,25 @@ export const getStats = async (req, res, next) => {
 // @access  Private
 export const getDashboardStats = async (req, res, next) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
     const today = formatDate();
 
-    const habits = await Habit.find({ user: userId, isTrashed: false });
-    const todayTasks = await Task.find({ user: userId, createdDate: today });
+    const habits = await Habit.findByUser(userId, false);
+    const todayTasks = await Task.findByUser(userId, { date: today });
 
     const summary = {
       date: today,
       habitsTotal: habits.length,
-      habitsCompleted: habits.filter(h => h.completedDates.includes(today)).length,
+      habitsCompleted: habits.filter((h) => h.completedDates.includes(today)).length,
       tasksTotal: todayTasks.length,
-      tasksCompleted: todayTasks.filter(t => t.completed).length,
+      tasksCompleted: todayTasks.filter((t) => t.completed).length,
       bestStreak: habits.reduce((max, h) => Math.max(max, h.streak), 0),
-      totalCheckIns: habits.reduce((sum, h) => sum + h.completedDates.length, 0)
+      totalCheckIns: habits.reduce((sum, h) => sum + h.completedDates.length, 0),
     };
 
     res.status(200).json({
       success: true,
-      data: summary
+      data: summary,
     });
   } catch (error) {
     next(error);

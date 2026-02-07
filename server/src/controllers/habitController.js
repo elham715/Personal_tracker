@@ -6,15 +6,12 @@ import { calculateStreak, isFuture } from '../utils/calculateStreak.js';
 // @access  Private
 export const getHabits = async (req, res, next) => {
   try {
-    const habits = await Habit.find({ 
-      user: req.user._id, 
-      isTrashed: false 
-    }).sort({ createdAt: -1 });
+    const habits = await Habit.findByUser(req.user.id, false);
 
     res.status(200).json({
       success: true,
       count: habits.length,
-      data: habits
+      data: habits,
     });
   } catch (error) {
     next(error);
@@ -26,21 +23,18 @@ export const getHabits = async (req, res, next) => {
 // @access  Private
 export const getHabit = async (req, res, next) => {
   try {
-    const habit = await Habit.findOne({
-      _id: req.params.id,
-      user: req.user._id
-    });
+    const habit = await Habit.findOne(req.params.id, req.user.id);
 
     if (!habit) {
       return res.status(404).json({
         success: false,
-        message: 'Habit not found'
+        message: 'Habit not found',
       });
     }
 
     res.status(200).json({
       success: true,
-      data: habit
+      data: habit,
     });
   } catch (error) {
     next(error);
@@ -55,20 +49,18 @@ export const createHabit = async (req, res, next) => {
     const { name, icon, category, color, target } = req.body;
 
     const habit = await Habit.create({
-      user: req.user._id,
+      userId: req.user.id,
       name,
       icon: icon || '✨',
-      category: category || 'Wellness',
-      color: color || 'violet',
+      category: category || 'Health',
+      color: color || 'purple',
       target: target || 1,
-      streak: 0,
-      completedDates: []
     });
 
     res.status(201).json({
       success: true,
       message: 'Habit created successfully',
-      data: habit
+      data: habit,
     });
   } catch (error) {
     next(error);
@@ -82,31 +74,27 @@ export const updateHabit = async (req, res, next) => {
   try {
     const { name, icon, category, color, target } = req.body;
 
-    let habit = await Habit.findOne({
-      _id: req.params.id,
-      user: req.user._id
-    });
-
-    if (!habit) {
+    // Check habit exists
+    const existing = await Habit.findOne(req.params.id, req.user.id);
+    if (!existing) {
       return res.status(404).json({
         success: false,
-        message: 'Habit not found'
+        message: 'Habit not found',
       });
     }
 
-    // Update fields
-    if (name !== undefined) habit.name = name;
-    if (icon !== undefined) habit.icon = icon;
-    if (category !== undefined) habit.category = category;
-    if (color !== undefined) habit.color = color;
-    if (target !== undefined) habit.target = target;
-
-    await habit.save();
+    const habit = await Habit.update(req.params.id, req.user.id, {
+      name,
+      icon,
+      category,
+      color,
+      target,
+    });
 
     res.status(200).json({
       success: true,
       message: 'Habit updated successfully',
-      data: habit
+      data: habit,
     });
   } catch (error) {
     next(error);
@@ -120,45 +108,41 @@ export const toggleHabitCompletion = async (req, res, next) => {
   try {
     const { date } = req.body;
 
-    console.log('Toggle habit - ID:', req.params.id, 'User:', req.user._id, 'Date:', date);
+    console.log('Toggle habit - ID:', req.params.id, 'User:', req.user.id, 'Date:', date);
 
     // Validate date is not in future
     if (isFuture(date)) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot complete habits for future dates'
+        message: 'Cannot complete habits for future dates',
       });
     }
 
-    let habit = await Habit.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-      isTrashed: false
-    });
+    // Check habit exists and is active
+    const existing = await Habit.findOneActive(req.params.id, req.user.id);
 
-    console.log('Habit found:', habit ? 'yes' : 'no');
+    console.log('Habit found:', existing ? 'yes' : 'no');
 
-    if (!habit) {
+    if (!existing) {
       return res.status(404).json({
         success: false,
-        message: 'Habit not found'
+        message: 'Habit not found',
       });
     }
 
     // Toggle the date
-    habit.toggleDate(date);
+    let habit = await Habit.toggleDate(req.params.id, date);
 
     // Recalculate streak
-    habit.streak = calculateStreak(habit.completedDates);
-
-    await habit.save();
+    const streak = calculateStreak(habit.completedDates);
+    habit = await Habit.updateStreak(req.params.id, streak);
 
     const wasCompleted = habit.completedDates.includes(date);
 
     res.status(200).json({
       success: true,
       message: wasCompleted ? 'Habit marked as complete' : 'Habit marked as incomplete',
-      data: habit
+      data: habit,
     });
   } catch (error) {
     next(error);
@@ -170,26 +154,21 @@ export const toggleHabitCompletion = async (req, res, next) => {
 // @access  Private
 export const deleteHabit = async (req, res, next) => {
   try {
-    let habit = await Habit.findOne({
-      _id: req.params.id,
-      user: req.user._id
-    });
+    const existing = await Habit.findOne(req.params.id, req.user.id);
 
-    if (!habit) {
+    if (!existing) {
       return res.status(404).json({
         success: false,
-        message: 'Habit not found'
+        message: 'Habit not found',
       });
     }
 
-    // Move to trash instead of deleting
-    habit.moveToTrash();
-    await habit.save();
+    const habit = await Habit.moveToTrash(req.params.id);
 
     res.status(200).json({
       success: true,
       message: 'Habit moved to trash',
-      data: habit
+      data: habit,
     });
   } catch (error) {
     next(error);
@@ -201,27 +180,21 @@ export const deleteHabit = async (req, res, next) => {
 // @access  Private
 export const restoreHabit = async (req, res, next) => {
   try {
-    let habit = await Habit.findOne({
-      _id: req.params.id,
-      user: req.user._id,
-      isTrashed: true
-    });
+    const existing = await Habit.findOneTrashed(req.params.id, req.user.id);
 
-    if (!habit) {
+    if (!existing) {
       return res.status(404).json({
         success: false,
-        message: 'Habit not found in trash'
+        message: 'Habit not found in trash',
       });
     }
 
-    // Restore from trash (clears history)
-    habit.restore();
-    await habit.save();
+    const habit = await Habit.restore(req.params.id);
 
     res.status(200).json({
       success: true,
       message: 'Habit restored successfully',
-      data: habit
+      data: habit,
     });
   } catch (error) {
     next(error);
