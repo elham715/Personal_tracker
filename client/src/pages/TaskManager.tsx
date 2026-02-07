@@ -12,6 +12,17 @@ const URGENCY = {
 
 type Priority = keyof typeof URGENCY;
 
+const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+const sortByUrgencyThenNewest = (items: any[]) =>
+  items.slice().sort((a, b) => {
+    const pa = PRIORITY_ORDER[a.priority] ?? 2;
+    const pb = PRIORITY_ORDER[b.priority] ?? 2;
+    if (pa !== pb) return pa - pb;
+    // within same priority: newest first (later index = newer)
+    return 0; // preserve reverse order from input
+  });
+
 const TaskManager: React.FC = () => {
   const { habits, tasks, addTask, toggleTask, deleteTask, toggleHabitDate } = useApp();
   const [view, setView] = useState<'today' | 'week' | 'all'>('today');
@@ -40,7 +51,8 @@ const TaskManager: React.FC = () => {
       completed: h.completedDates.includes(dateStr),
       priority: 'high' as Priority, isHabit: true, habitId: h.id, date: dateStr, createdAt: '',
     }));
-    return [...fromHabits, ...tasks.filter(t => t.date === dateStr && !t.isHabit).slice().reverse()];
+    const dateTasks = tasks.filter(t => t.date === dateStr && !t.isHabit).slice().reverse();
+    return [...fromHabits, ...sortByUrgencyThenNewest(dateTasks)];
   };
 
   const handleAdd = async () => {
@@ -70,9 +82,9 @@ const TaskManager: React.FC = () => {
     return (
       <div key={task.id} className="animate-fade-up group" style={{ animationDelay: `${i * 35}ms` }}>
         <div className={`relative flex items-center gap-3 px-4 py-3 rounded-xl border transition-all
-          ${isDone ? 'bg-gray-50 border-gray-100 opacity-60' : `${u.cardBg} hover:shadow-md`}
+          ${isDone ? `${u.cardBg} opacity-70` : `${u.cardBg} hover:shadow-md`}
           active:scale-[0.99]`}
-          style={isDone ? undefined : { boxShadow: u.cardShadow }}>
+          style={{ boxShadow: u.cardShadow }}>
           <button onClick={() => handleToggle(task)} className="flex-shrink-0">
             <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
               isDone ? `bg-gradient-to-br ${u.gradient}` : 'border-2 border-gray-200 hover:border-gray-300'
@@ -120,7 +132,7 @@ const TaskManager: React.FC = () => {
     { key: 'all' as const,   label: 'All',   icon: ListChecks, count: tasks.filter(t => !t.isHabit).length },
   ];
 
-  const allTasksReversed = tasks.filter(t => !t.isHabit).slice().reverse();
+  const allTasksSorted = sortByUrgencyThenNewest(tasks.filter(t => !t.isHabit).slice().reverse());
 
   return (
     <div className="page-container max-w-lg mx-auto">
@@ -263,12 +275,12 @@ const TaskManager: React.FC = () => {
         })}
 
         {view === 'all' && (
-          allTasksReversed.length === 0 && !composing ? (
+          allTasksSorted.length === 0 && !composing ? (
             <div className="text-center py-20 animate-fade-up">
               <p className="text-[14px] text-gray-400">No tasks created yet</p>
             </div>
           ) : (
-            allTasksReversed.map((t, i) => renderTaskCard(t, i))
+            allTasksSorted.map((t, i) => renderTaskCard(t, i))
           )
         )}
       </div>
