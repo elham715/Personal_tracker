@@ -8,6 +8,7 @@
   body {
     @apply bg-[#f8f8fa] text-gray-900 antialiased;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+    padding-top: env(safe-area-inset-top, 0px);
   }
 }
 

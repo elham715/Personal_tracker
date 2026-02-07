@@ -1,9 +1,15 @@
 import axios from 'axios';
 import { auth } from '@/config/firebase';
+import { Capacitor } from '@capacitor/core';
 
-// Auto-detect API URL: use env var if set, otherwise detect production vs local
+// Auto-detect API URL:
+// 1. Use env var if set
+// 2. If running as native app (Capacitor), use deployed backend
+// 3. If on a non-localhost web host, use deployed backend
+// 4. Otherwise use local dev server
+const isNative = Capacitor.isNativePlatform();
 const API_URL = import.meta.env.VITE_API_URL
-  || (window.location.hostname !== 'localhost'
+  || (isNative || window.location.hostname !== 'localhost'
     ? 'https://personal-tracker-dun.vercel.app/api'
     : 'http://localhost:5000/api');
 
