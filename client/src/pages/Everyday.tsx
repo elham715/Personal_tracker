@@ -4,6 +4,21 @@ import { formatDate, getDatesRange, isFuture, isToday } from '@/utils/helpers';
 import { Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+/* ── Color map: habit.color → Tailwind classes for streak intensity ── */
+const COLOR_INTENSITY: Record<string, string[]> = {
+  purple: ['bg-gray-100', 'bg-purple-200', 'bg-purple-400', 'bg-purple-500', 'bg-purple-600'],
+  blue:   ['bg-gray-100', 'bg-blue-200',   'bg-blue-400',   'bg-blue-500',   'bg-blue-600'],
+  green:  ['bg-gray-100', 'bg-green-200',  'bg-green-400',  'bg-green-500',  'bg-green-600'],
+  pink:   ['bg-gray-100', 'bg-pink-200',   'bg-pink-400',   'bg-pink-500',   'bg-pink-600'],
+  orange: ['bg-gray-100', 'bg-orange-200', 'bg-orange-400', 'bg-orange-500', 'bg-orange-600'],
+  cyan:   ['bg-gray-100', 'bg-cyan-200',   'bg-cyan-400',   'bg-cyan-500',   'bg-cyan-600'],
+};
+
+const RING_MAP: Record<string, string> = {
+  purple: 'ring-purple-400', blue: 'ring-blue-400', green: 'ring-green-400',
+  pink: 'ring-pink-400', orange: 'ring-orange-400', cyan: 'ring-cyan-400',
+};
+
 const Everyday: React.FC = () => {
   const { habits, toggleHabitDate } = useApp();
   const dates = getDatesRange(14);
@@ -21,12 +36,13 @@ const Everyday: React.FC = () => {
     return s;
   };
 
-  const intensity = (streak: number): string => {
-    if (streak === 0) return 'bg-gray-100';
-    if (streak <= 1) return 'bg-indigo-200';
-    if (streak <= 3) return 'bg-indigo-400';
-    if (streak <= 5) return 'bg-indigo-500';
-    return 'bg-indigo-600';
+  const intensity = (streak: number, color: string): string => {
+    const levels = COLOR_INTENSITY[color] || COLOR_INTENSITY.purple;
+    if (streak === 0) return levels[0];
+    if (streak <= 1) return levels[1];
+    if (streak <= 3) return levels[2];
+    if (streak <= 5) return levels[3];
+    return levels[4];
   };
 
   return (
@@ -61,34 +77,38 @@ const Everyday: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {habits.map(habit => (
-                <tr key={habit.id} className="border-t border-gray-50">
-                  <td className="py-2 px-3 sticky left-0 bg-white z-10">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm">{habit.icon}</span>
-                      <span className="text-[12px] text-gray-800 font-medium truncate max-w-[80px]">{habit.name}</span>
-                    </div>
-                  </td>
-                  {dates.map((date, i) => {
-                    const key = formatDate(date);
-                    const done = habit.completedDates.includes(key);
-                    const streak = getStreak(habit, date);
-                    const future = isFuture(key);
-                    const t = isToday(key);
-                    return (
-                      <td key={i} className="p-0.5 text-center">
-                        <button onClick={() => !future && toggleHabitDate(habit.id, key)}
-                          disabled={future}
-                          className={`w-7 h-7 rounded-md flex items-center justify-center mx-auto transition-all ${
-                            future ? 'bg-gray-50 cursor-default' : intensity(streak)
-                          } ${t && !future ? 'ring-1.5 ring-indigo-400 ring-offset-1' : ''}`}>
-                          {done && <Check size={11} className="text-white" strokeWidth={3} />}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {habits.map(habit => {
+                const hColor = habit.color || 'purple';
+                const ringClass = RING_MAP[hColor] || RING_MAP.purple;
+                return (
+                  <tr key={habit.id} className="border-t border-gray-50">
+                    <td className="py-2 px-3 sticky left-0 bg-white z-10">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">{habit.icon}</span>
+                        <span className="text-[12px] text-gray-800 font-medium truncate max-w-[80px]">{habit.name}</span>
+                      </div>
+                    </td>
+                    {dates.map((date, i) => {
+                      const key = formatDate(date);
+                      const done = habit.completedDates.includes(key);
+                      const streak = getStreak(habit, date);
+                      const future = isFuture(key);
+                      const t = isToday(key);
+                      return (
+                        <td key={i} className="p-0.5 text-center">
+                          <button onClick={() => !future && toggleHabitDate(habit.id, key)}
+                            disabled={future}
+                            className={`w-7 h-7 rounded-md flex items-center justify-center mx-auto transition-all ${
+                              future ? 'bg-gray-50 cursor-default' : intensity(streak, hColor)
+                            } ${t && !future ? `ring-1.5 ${ringClass} ring-offset-1` : ''}`}>
+                            {done && <Check size={11} className="text-white" strokeWidth={3} />}
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
