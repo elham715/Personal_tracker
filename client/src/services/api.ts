@@ -1,7 +1,11 @@
 import axios from 'axios';
 import { auth } from '@/config/firebase';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Auto-detect API URL: use env var if set, otherwise detect production vs local
+const API_URL = import.meta.env.VITE_API_URL
+  || (window.location.hostname !== 'localhost'
+    ? 'https://personal-tracker-dun.vercel.app/api'
+    : 'http://localhost:5000/api');
 
 // Create axios instance with default config
 const api = axios.create({
