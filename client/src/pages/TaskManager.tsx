@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/helpers';
-import { Plus, Trash2, Check, ChevronDown, ChevronRight, Circle } from 'lucide-react';
+import { Plus, Trash2, Check, ChevronDown, ChevronRight } from 'lucide-react';
 
 const TaskManager: React.FC = () => {
   const { habits, tasks, addTask, toggleTask, deleteTask, toggleHabitDate } = useApp();

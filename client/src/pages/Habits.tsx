@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/helpers';
-import { getColorClasses } from '@/utils/constants';
 import { Check, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
