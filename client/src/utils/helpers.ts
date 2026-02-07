@@ -1,5 +1,5 @@
 export const formatDate = (date: Date = new Date()): string => {
-  return date.toISOString().split('T')[0];
+  return date.toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
 };
 
 export const isToday = (dateStr: string): boolean => {
@@ -7,10 +7,8 @@ export const isToday = (dateStr: string): boolean => {
 };
 
 export const isFuture = (dateStr: string): boolean => {
-  const date = new Date(dateStr);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return date.getTime() > today.getTime();
+  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+  return dateStr > todayStr;
 };
 
 export const calculateStreak = (completedDates: string[]): number => {
