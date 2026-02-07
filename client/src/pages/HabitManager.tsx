@@ -22,7 +22,7 @@ const HabitManager: React.FC = () => {
   };
 
   return (
-    <div className="page-container max-w-lg mx-auto">
+    <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
       <div className="flex items-center justify-between pt-4 mb-4 animate-fade-up">
         <h1 className="text-[22px] font-bold text-gray-900">Manage</h1>
         <button onClick={() => setShowForm(!showForm)}

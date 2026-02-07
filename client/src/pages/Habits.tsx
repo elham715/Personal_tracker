@@ -456,7 +456,7 @@ const Habits: React.FC = () => {
   };
 
   return (
-    <div className="page-container max-w-lg mx-auto pb-8">
+    <div className="page-container max-w-lg lg:max-w-4xl mx-auto pb-8">
       <div className="flex items-center justify-between pt-4 mb-4 animate-fade-up">
         <h1 className="text-[22px] font-bold text-gray-900">Habits</h1>
         <Link to="/habit-manager" className="text-[13px] text-indigo-600 font-medium">+ New</Link>
@@ -464,7 +464,7 @@ const Habits: React.FC = () => {
 
       {/* ── Habit cards ── */}
       {habits.length > 0 ? (
-        <div className="space-y-2 stagger">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 stagger">
           {habits.map(habit => {
             const done = habit.completedDates.includes(today);
             const open = expandedId === habit.id;
@@ -573,9 +573,9 @@ const Habits: React.FC = () => {
         </button>
 
         {showManual && (
-          <div className="mt-3 space-y-3">
+          <div className="mt-3 space-y-3 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
             {/* Hero quote */}
-            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 text-center">
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 text-center lg:col-span-2">
               <p className="text-[14px] text-white/90 italic leading-relaxed">
                 "You do not rise to the level of your goals.<br />You fall to the level of your systems."
               </p>
@@ -588,11 +588,11 @@ const Habits: React.FC = () => {
             </div>
 
             {/* Table of contents */}
-            <div className="bg-white rounded-2xl p-4 border border-gray-100">
+            <div className="bg-white rounded-2xl p-4 border border-gray-100 lg:col-span-2">
               <h3 className="text-[13px] font-bold text-gray-800 mb-3 flex items-center gap-1.5">
                 📑 Contents <span className="text-[10px] text-gray-400 font-normal ml-1">({MANUAL_SECTIONS.length} chapters)</span>
               </h3>
-              <div className="grid grid-cols-1 gap-1">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-1">
                 {MANUAL_SECTIONS.map((sec, i) => (
                   <button
                     key={sec.id}
@@ -643,7 +643,7 @@ const Habits: React.FC = () => {
             })}
 
             {/* Ultimate Summary */}
-            <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-2xl p-5 text-center shadow-lg shadow-purple-200/50">
+            <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-2xl p-5 text-center shadow-lg shadow-purple-200/50 lg:col-span-2">
               <p className="text-[10px] text-white/50 uppercase tracking-widest font-bold mb-3">Ultimate Takeaway</p>
               <div className="space-y-2.5 text-left max-w-xs mx-auto">
                 {[

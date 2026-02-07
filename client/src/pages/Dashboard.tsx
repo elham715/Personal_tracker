@@ -10,7 +10,7 @@ const ProgressRing: React.FC<{ pct: number; size?: number }> = ({ pct, size = 10
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
   return (
-    <svg width={size} height={size} className="block">
+    <svg width={size} height={size} className="block lg:w-[120px] lg:h-[120px]" viewBox={`0 0 ${size} ${size}`}>
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e5e7eb" strokeWidth={stroke} />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#6366f1" strokeWidth={stroke}
         strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
@@ -43,39 +43,42 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="page-container max-w-lg mx-auto">
+    <div className="page-container max-w-lg lg:max-w-5xl mx-auto">
       {/* Greeting */}
       <div className="pt-4 mb-6 animate-fade-up">
-        <p className="text-[13px] text-gray-400 font-medium">{greeting()}</p>
-        <h1 className="text-[22px] font-bold text-gray-900 -mt-0.5">
+        <p className="text-[13px] lg:text-[14px] text-gray-400 font-medium">{greeting()}</p>
+        <h1 className="text-[22px] lg:text-[28px] font-bold text-gray-900 -mt-0.5">
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
         </h1>
       </div>
 
       {/* Progress + Stats */}
-      <div className="flex items-center gap-5 bg-white rounded-2xl p-5 mb-4 animate-fade-up" style={{ animationDelay: '60ms' }}>
+      <div className="flex items-center gap-5 lg:gap-8 bg-white rounded-2xl p-5 lg:p-6 mb-4 animate-fade-up" style={{ animationDelay: '60ms' }}>
         <ProgressRing pct={pct} />
         <div className="flex-1 space-y-3">
           <div>
-            <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wider">Today</p>
-            <p className="text-[15px] font-semibold text-gray-900">{completedToday}/{totalHabits} habits</p>
+            <p className="text-[11px] lg:text-[12px] text-gray-400 font-medium uppercase tracking-wider">Today</p>
+            <p className="text-[15px] lg:text-[17px] font-semibold text-gray-900">{completedToday}/{totalHabits} habits</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex gap-4 lg:gap-6">
             <div>
-              <p className="text-[18px] font-bold text-gray-900">{bestStreak}</p>
-              <p className="text-[10px] text-gray-400">Best streak</p>
+              <p className="text-[18px] lg:text-[22px] font-bold text-gray-900">{bestStreak}</p>
+              <p className="text-[10px] lg:text-[11px] text-gray-400">Best streak</p>
             </div>
             <div>
-              <p className="text-[18px] font-bold text-gray-900">{totalCheckins}</p>
-              <p className="text-[10px] text-gray-400">Check-ins</p>
+              <p className="text-[18px] lg:text-[22px] font-bold text-gray-900">{totalCheckins}</p>
+              <p className="text-[10px] lg:text-[11px] text-gray-400">Check-ins</p>
             </div>
             <div>
-              <p className="text-[18px] font-bold text-gray-900">{tasksCompleted}</p>
-              <p className="text-[10px] text-gray-400">Tasks done</p>
+              <p className="text-[18px] lg:text-[22px] font-bold text-gray-900">{tasksCompleted}</p>
+              <p className="text-[10px] lg:text-[11px] text-gray-400">Tasks done</p>
             </div>
           </div>
         </div>
       </div>
+
+      {/* ── Desktop 2-column grid ── */}
+      <div className="lg:grid lg:grid-cols-2 lg:gap-5">
 
       {/* Today's Habits */}
       {habits.length > 0 ? (
@@ -99,7 +102,7 @@ const Dashboard: React.FC = () => {
                   }`}>
                     {done ? <Check size={16} className="text-white" strokeWidth={3} /> : <span className="text-base">{habit.icon}</span>}
                   </div>
-                  <span className={`flex-1 text-left text-[14px] font-medium ${done ? 'text-indigo-700' : 'text-gray-800'}`}>
+                  <span className={`flex-1 text-left text-[14px] lg:text-[15px] font-medium ${done ? 'text-indigo-700' : 'text-gray-800'}`}>
                     {habit.name}
                   </span>
                   {(habit.streak || 0) > 0 && (
@@ -124,7 +127,7 @@ const Dashboard: React.FC = () => {
 
       {/* Weekly Overview */}
       {habits.length > 0 && (
-        <div className="bg-white rounded-2xl p-4 animate-fade-up" style={{ animationDelay: '180ms' }}>
+        <div className="bg-white rounded-2xl p-4 lg:p-5 animate-fade-up" style={{ animationDelay: '180ms' }}>
           <h2 className="text-[13px] font-semibold text-gray-500 uppercase tracking-wider mb-3">This Week</h2>
           <div className="space-y-2.5">
             {habits.slice(0, 4).map(habit => {
@@ -139,7 +142,7 @@ const Dashboard: React.FC = () => {
                       const done = habit.completedDates?.includes(d);
                       const future = date > new Date();
                       return (
-                        <div key={i} className={`w-6 h-6 rounded-md text-[9px] font-medium flex items-center justify-center ${
+                        <div key={i} className={`w-6 h-6 lg:w-8 lg:h-8 rounded-md text-[9px] lg:text-[11px] font-medium flex items-center justify-center ${
                           future ? 'bg-gray-50 text-gray-300' :
                           done ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'
                         }`}>
@@ -154,6 +157,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      </div>{/* end 2-col grid */}
 
       {/* ── The Habit Manual ── */}
       <Link to="/habits" className="block mt-4 animate-fade-up" style={{ animationDelay: '240ms' }}>

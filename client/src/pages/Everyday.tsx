@@ -163,7 +163,7 @@ const Everyday: React.FC = () => {
   };
 
   return (
-    <div className="page-container max-w-4xl mx-auto pb-8">
+    <div className="page-container max-w-4xl lg:max-w-6xl mx-auto pb-8">
       <div className="flex items-center justify-between pt-4 mb-4 animate-fade-up">
         <h1 className="text-[22px] font-bold text-gray-900">Calendar</h1>
       </div>
@@ -248,7 +248,7 @@ const Everyday: React.FC = () => {
             <h2 className="text-[15px] font-bold text-gray-900 mb-3 flex items-center gap-1.5">
               <Flame size={16} className="text-orange-500" /> Streak Stats
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
               {analytics.habitStats.map(h => (
                 <div key={h.id} className="bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
                   <div className="flex items-center gap-1.5 mb-2.5">
@@ -274,8 +274,11 @@ const Everyday: React.FC = () => {
             </div>
           </div>
 
+          {/* Desktop 2-col grid for charts */}
+          <div className="lg:grid lg:grid-cols-2 lg:gap-5">
+
           {/* ── 14-Day Habit Completion Bars ── */}
-          <div className="mt-5 bg-white rounded-2xl p-4 shadow-sm animate-fade-up" style={{ animationDelay: '180ms' }}>
+          <div className="mt-5 lg:mt-5 bg-white rounded-2xl p-4 shadow-sm animate-fade-up" style={{ animationDelay: '180ms' }}>
             <h2 className="text-[15px] font-bold text-gray-900 mb-3 flex items-center gap-1.5">
               <Trophy size={16} className="text-amber-500" /> 14-Day Completion
             </h2>
@@ -308,13 +311,15 @@ const Everyday: React.FC = () => {
           </div>
 
           {/* ── Daily Progress Line Chart ── */}
-          <div className="mt-5 bg-white rounded-2xl p-4 shadow-sm animate-fade-up" style={{ animationDelay: '240ms' }}>
+          <div className="mt-5 lg:mt-5 bg-white rounded-2xl p-4 shadow-sm animate-fade-up" style={{ animationDelay: '240ms' }}>
             <h2 className="text-[15px] font-bold text-gray-900 mb-1 flex items-center gap-1.5">
               <TrendingUp size={16} className="text-indigo-500" /> Daily Progress
             </h2>
             <p className="text-[11px] text-gray-400 mb-2">Percentage of habits completed each day</p>
             {renderLineChart()}
           </div>
+
+          </div>{/* end 2-col grid */}
 
 
         </>

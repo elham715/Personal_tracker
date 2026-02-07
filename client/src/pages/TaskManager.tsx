@@ -225,7 +225,7 @@ const TaskManager: React.FC = () => {
   };
 
   return (
-    <div className="page-container max-w-lg mx-auto">
+    <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
       {/* Title */}
       <div className="pt-4 mb-4 animate-fade-up">
         <p className="text-[11px] text-gray-400 font-medium uppercase tracking-widest">
