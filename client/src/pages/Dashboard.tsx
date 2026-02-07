@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatDate, getDatesRange } from '@/utils/helpers';
-import { Check, Plus, ArrowRight } from 'lucide-react';
+import { Check, Plus, ArrowRight, BookOpen, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const ProgressRing: React.FC<{ pct: number; size?: number }> = ({ pct, size = 100 }) => {
@@ -154,6 +154,40 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ── The Habit Manual ── */}
+      <Link to="/habits" className="block mt-4 animate-fade-up" style={{ animationDelay: '240ms' }}>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-900 to-indigo-950 p-5 shadow-lg shadow-slate-300/30 active:scale-[0.98] transition-transform">
+          {/* decorative circles */}
+          <div className="absolute -right-6 -top-6 w-28 h-28 rounded-full bg-indigo-500/10" />
+          <div className="absolute -right-2 bottom-0 w-16 h-16 rounded-full bg-purple-500/10" />
+
+          <div className="relative flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <BookOpen size={22} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <h3 className="text-[15px] font-bold text-white">The Habit Manual</h3>
+                <Sparkles size={13} className="text-amber-400" />
+              </div>
+              <p className="text-[11.5px] text-white/50 leading-snug">
+                Master the science of Atomic Habits — from tiny changes to lasting transformation
+              </p>
+            </div>
+            <ArrowRight size={16} className="text-white/30 shrink-0" />
+          </div>
+
+          {/* topic pills */}
+          <div className="relative flex flex-wrap gap-1.5 mt-3.5">
+            {['Identity Change', 'Four Laws', 'Systems > Goals', 'Habit Loop', '2-Min Rule'].map(tag => (
+              <span key={tag} className="text-[9px] font-medium text-white/50 bg-white/[0.07] px-2 py-0.5 rounded-full">
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+      </Link>
     </div>
   );
 };
