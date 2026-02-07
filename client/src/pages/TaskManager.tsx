@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/helpers';
-import { Plus, Trash2, Check, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, Check, ChevronDown, ChevronRight, Circle } from 'lucide-react';
 
 const TaskManager: React.FC = () => {
   const { habits, tasks, addTask, toggleTask, deleteTask, toggleHabitDate } = useApp();
   const [newTaskText, setNewTaskText] = useState('');
+  const [showAddFor, setShowAddFor] = useState<string | null>(null);
   const [priority, setPriority] = useState<'high' | 'medium' | 'low'>('medium');
-  const [activeTab, setActiveTab] = useState<'today' | 'next7' | 'all'>('next7');
-  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set([formatDate()])); // Today expanded by default
-  const [selectedDate, setSelectedDate] = useState<string>(formatDate());
-  
-  // Get dates for next 7 days
+  const [activeTab, setActiveTab] = useState<'today' | 'week' | 'all'>('today');
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set([formatDate()]));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showAddFor && inputRef.current) inputRef.current.focus();
+  }, [showAddFor]);
+
   const getNext7Days = () => {
     const dates = [];
     for (let i = 0; i < 7; i++) {
@@ -19,9 +23,9 @@ const TaskManager: React.FC = () => {
       date.setDate(date.getDate() + i);
       dates.push({
         dateStr: formatDate(date),
-        date: date,
-        label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase(),
-        fullLabel: date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
+        date,
+        label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-US', { weekday: 'long' }),
+        shortLabel: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       });
     }
     return dates;
@@ -29,177 +33,156 @@ const TaskManager: React.FC = () => {
 
   const next7Days = getNext7Days();
 
-  // Get tasks for a specific date
   const getTasksForDate = (dateStr: string) => {
     const habitTasks = habits
-      .filter(habit => habit && habit.id && Array.isArray(habit.completedDates))
-      .map(habit => ({
-        id: `habit_task_${habit.id}_${dateStr}`,
-        text: `${habit.icon} ${habit.name}`,
-        completed: habit.completedDates.includes(dateStr),
+      .filter(h => h && h.id && Array.isArray(h.completedDates))
+      .map(h => ({
+        id: `habit_${h.id}_${dateStr}`,
+        text: `${h.icon} ${h.name}`,
+        completed: h.completedDates.includes(dateStr),
         priority: 'high' as const,
         isHabit: true,
-        habitId: habit.id,
+        habitId: h.id,
         date: dateStr,
         createdAt: new Date().toISOString(),
       }));
-
     const customTasks = tasks.filter(t => t.date === dateStr && !t.isHabit);
     return [...habitTasks, ...customTasks];
   };
 
-  const handleAddTask = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleAddTask = async (dateStr: string) => {
     if (!newTaskText.trim()) return;
-
     try {
-      await addTask({
-        text: newTaskText,
-        completed: false,
-        priority,
-        isHabit: false,
-        date: selectedDate,
-      });
-
+      await addTask({ text: newTaskText, completed: false, priority, isHabit: false, date: dateStr });
       setNewTaskText('');
       setPriority('medium');
+      setShowAddFor(null);
     } catch (error) {
       console.error('Error adding task:', error);
-      alert('Failed to add task. Please try again.');
     }
   };
 
   const handleToggle = (task: ReturnType<typeof getTasksForDate>[0]) => {
-    if (task.isHabit && task.habitId) {
-      toggleHabitDate(task.habitId, task.date);
-    } else {
-      toggleTask(task.id);
-    }
+    if (task.isHabit && task.habitId) toggleHabitDate(task.habitId, task.date);
+    else toggleTask(task.id);
   };
 
   const toggleDay = (dateStr: string) => {
-    const newExpanded = new Set(expandedDays);
-    if (newExpanded.has(dateStr)) {
-      newExpanded.delete(dateStr);
-    } else {
-      newExpanded.add(dateStr);
-    }
-    setExpandedDays(newExpanded);
+    const next = new Set(expandedDays);
+    next.has(dateStr) ? next.delete(dateStr) : next.add(dateStr);
+    setExpandedDays(next);
   };
+
+  const priorityDot = (p: string) => {
+    if (p === 'high') return 'bg-red-500';
+    if (p === 'medium') return 'bg-yellow-500';
+    return 'bg-green-500';
+  };
+
+  const renderTask = (task: ReturnType<typeof getTasksForDate>[0]) => (
+    <div
+      key={task.id}
+      className={`group flex items-center gap-3 py-3 px-1 border-b border-gray-50 last:border-0 transition-all ${task.completed ? 'opacity-50' : ''}`}
+    >
+      {/* Checkbox */}
+      <button onClick={() => handleToggle(task)} className="flex-shrink-0">
+        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+          task.completed ? 'bg-purple-600 border-purple-600' : 'border-gray-300 hover:border-purple-400'
+        }`}>
+          {task.completed && <Check size={14} className="text-white" strokeWidth={3} />}
+        </div>
+      </button>
+
+      {/* Text */}
+      <span className={`flex-1 text-[15px] leading-snug ${task.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+        {task.text}
+      </span>
+
+      {/* Badges */}
+      {task.isHabit ? (
+        <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">Habit</span>
+      ) : (
+        <div className={`w-2 h-2 rounded-full ${priorityDot(task.priority)} flex-shrink-0`} />
+      )}
+
+      {/* Delete */}
+      {!task.isHabit && (
+        <button
+          onClick={(e) => { e.stopPropagation(); deleteTask(task.id); }}
+          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+        >
+          <Trash2 size={14} className="text-red-400" />
+        </button>
+      )}
+    </div>
+  );
 
   const renderDaySection = (dayInfo: ReturnType<typeof getNext7Days>[0]) => {
     const dayTasks = getTasksForDate(dayInfo.dateStr);
-    const completedCount = dayTasks.filter(t => t.completed).length;
-    const totalCount = dayTasks.length;
+    const completed = dayTasks.filter(t => t.completed).length;
+    const total = dayTasks.length;
     const isExpanded = expandedDays.has(dayInfo.dateStr);
+    const isAddingHere = showAddFor === dayInfo.dateStr;
 
     return (
-      <div key={dayInfo.dateStr} className="mb-4">
+      <div key={dayInfo.dateStr} className="mb-3">
         {/* Day Header */}
         <button
           onClick={() => toggleDay(dayInfo.dateStr)}
-          className="w-full flex items-center justify-between p-4 bg-white rounded-xl hover:bg-gray-50 transition-colors"
+          className="w-full flex items-center gap-2 py-2 px-1 group"
         >
-          <div className="flex items-center gap-3">
-            {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-            <h3 className="text-lg font-bold text-gray-900">
-              {dayInfo.label} {totalCount > 0 && `(${completedCount}/${totalCount})`}
-            </h3>
-          </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedDate(dayInfo.dateStr);
-              setExpandedDays(new Set([...expandedDays, dayInfo.dateStr]));
-            }}
-            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            <Plus size={20} className="text-gray-600" />
-          </button>
+          {isExpanded ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
+          <span className="text-sm font-semibold text-gray-900">{dayInfo.label}</span>
+          {total > 0 && (
+            <span className="text-xs text-gray-400">{completed}/{total}</span>
+          )}
+          <div className="flex-1" />
+          <span className="text-xs text-gray-400">{dayInfo.shortLabel}</span>
         </button>
 
-        {/* Tasks List */}
+        {/* Task List */}
         {isExpanded && (
-          <div className="mt-2 space-y-2 ml-4">
-            {/* Add task form for this date */}
-            {selectedDate === dayInfo.dateStr && (
-              <form onSubmit={handleAddTask} className="flex gap-2 mb-2">
+          <div className="ml-1 pl-4 border-l-2 border-gray-100">
+            {dayTasks.map(renderTask)}
+
+            {/* Inline Add */}
+            {isAddingHere ? (
+              <div className="py-2 flex items-center gap-2">
                 <input
-                  type="text"
+                  ref={inputRef}
                   value={newTaskText}
                   onChange={(e) => setNewTaskText(e.target.value)}
-                  placeholder="Add a task..."
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleAddTask(dayInfo.dateStr);
+                    if (e.key === 'Escape') { setShowAddFor(null); setNewTaskText(''); }
+                  }}
+                  placeholder="What needs to be done?"
+                  className="flex-1 text-[15px] text-gray-800 placeholder:text-gray-300 bg-transparent outline-none"
                 />
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as 'high' | 'medium' | 'low')}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="text-xs bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-gray-600"
                 >
-                  <option value="high">High</option>
-                  <option value="medium">Med</option>
-                  <option value="low">Low</option>
+                  <option value="high">!</option>
+                  <option value="medium">!!</option>
+                  <option value="low">!!!</option>
                 </select>
-                <button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                <button
+                  onClick={() => handleAddTask(dayInfo.dateStr)}
+                  className="text-purple-600 font-semibold text-sm hover:text-purple-700"
+                >
                   Add
                 </button>
-              </form>
-            )}
-
-            {/* Tasks */}
-            {dayTasks.length === 0 ? (
-              <p className="text-gray-400 text-sm p-4">No tasks</p>
+              </div>
             ) : (
-              dayTasks.map(task => (
-                <div
-                  key={task.id}
-                  onClick={() => handleToggle(task)}
-                  className={`flex items-center gap-3 p-3 bg-white rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-                    task.completed ? 'opacity-60' : ''
-                  }`}
-                >
-                  <div
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                      task.completed
-                        ? 'bg-green-600 border-transparent'
-                        : 'border-gray-300'
-                    }`}
-                  >
-                    {task.completed && <Check size={14} className="text-white" />}
-                  </div>
-
-                  <p className={`flex-1 text-gray-900 ${task.completed ? 'line-through text-gray-400' : ''}`}>
-                    {task.text}
-                  </p>
-
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-medium ${
-                      task.isHabit
-                        ? 'bg-purple-100 text-purple-700'
-                        : task.priority === 'high'
-                        ? 'bg-red-100 text-red-700'
-                        : task.priority === 'medium'
-                        ? 'bg-yellow-100 text-yellow-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}
-                  >
-                    {task.isHabit ? 'Habit' : task.priority}
-                  </span>
-
-                  {!task.isHabit && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteTask(task.id);
-                      }}
-                      className="p-1 hover:bg-red-100 rounded transition-colors"
-                    >
-                      <Trash2 size={16} className="text-red-400" />
-                    </button>
-                  )}
-                </div>
-              ))
+              <button
+                onClick={() => { setShowAddFor(dayInfo.dateStr); setExpandedDays(new Set([...expandedDays, dayInfo.dateStr])); }}
+                className="flex items-center gap-2 py-2.5 text-gray-400 hover:text-purple-500 transition-colors w-full"
+              >
+                <Plus size={16} />
+                <span className="text-sm">Add task</span>
+              </button>
             )}
           </div>
         )}
@@ -208,114 +191,60 @@ const TaskManager: React.FC = () => {
   };
 
   return (
-    <div className="page-container animate-fade-in max-w-3xl mx-auto">
+    <div className="page-container max-w-2xl mx-auto animate-fade-in">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">tasks +</h1>
-        
-        {/* Tabs */}
-        <div className="flex gap-6 border-b border-gray-200">
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-5 bg-gray-100 rounded-xl p-1">
+        {[
+          { key: 'today' as const, label: 'Today' },
+          { key: 'week' as const, label: 'This Week' },
+          { key: 'all' as const, label: 'All' },
+        ].map(tab => (
           <button
-            onClick={() => setActiveTab('today')}
-            className={`pb-3 font-medium transition-colors relative ${
-              activeTab === 'today' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              activeTab === tab.key
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            today
-            {activeTab === 'today' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900"></div>
-            )}
+            {tab.label}
           </button>
-          <button
-            onClick={() => setActiveTab('next7')}
-            className={`pb-3 font-medium transition-colors relative ${
-              activeTab === 'next7' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            next 7 days
-            {activeTab === 'next7' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900"></div>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`pb-3 font-medium transition-colors relative ${
-              activeTab === 'all' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            all
-            {activeTab === 'all' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-900"></div>
-            )}
-          </button>
-        </div>
+        ))}
       </div>
 
       {/* Content */}
-      <div>
-        {activeTab === 'today' && (
-          <div>
-            {renderDaySection(next7Days[0])}
-          </div>
-        )}
-
-        {activeTab === 'next7' && (
-          <div>
-            {next7Days.map(day => renderDaySection(day))}
-          </div>
-        )}
-
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        {activeTab === 'today' && renderDaySection(next7Days[0])}
+        {activeTab === 'week' && next7Days.map(day => renderDaySection(day))}
         {activeTab === 'all' && (
-          <div className="space-y-2">
-            {tasks.map(task => (
-              <div
-                key={task.id}
-                onClick={() => toggleTask(task.id)}
-                className={`flex items-center gap-3 p-4 bg-white rounded-lg hover:bg-gray-50 cursor-pointer transition-colors ${
-                  task.completed ? 'opacity-60' : ''
-                }`}
-              >
-                <div
-                  className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                    task.completed
-                      ? 'bg-green-600 border-transparent'
-                      : 'border-gray-300'
-                  }`}
-                >
-                  {task.completed && <Check size={14} className="text-white" />}
+          <div>
+            {tasks.length === 0 ? (
+              <p className="text-center text-gray-400 py-8">No tasks yet</p>
+            ) : (
+              tasks.map(task => (
+                <div key={task.id} className="group flex items-center gap-3 py-3 px-1 border-b border-gray-50 last:border-0">
+                  <button onClick={() => toggleTask(task.id)} className="flex-shrink-0">
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                      task.completed ? 'bg-purple-600 border-purple-600' : 'border-gray-300'
+                    }`}>
+                      {task.completed && <Check size={14} className="text-white" strokeWidth={3} />}
+                    </div>
+                  </button>
+                  <span className={`flex-1 text-[15px] ${task.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{task.text}</span>
+                  <span className="text-[11px] text-gray-400">{task.date}</span>
+                  <div className={`w-2 h-2 rounded-full ${priorityDot(task.priority)}`} />
+                  <button onClick={() => deleteTask(task.id)} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded-lg transition-all">
+                    <Trash2 size={14} className="text-red-400" />
+                  </button>
                 </div>
-
-                <p className={`flex-1 text-gray-900 ${task.completed ? 'line-through text-gray-400' : ''}`}>
-                  {task.text}
-                </p>
-
-                <span className="text-xs text-gray-500">
-                  {new Date(task.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </span>
-
-                <span
-                  className={`px-2 py-1 rounded text-xs font-medium ${
-                    task.priority === 'high'
-                      ? 'bg-red-100 text-red-700'
-                      : task.priority === 'medium'
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-green-100 text-green-700'
-                  }`}
-                >
-                  {task.priority}
-                </span>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteTask(task.id);
-                  }}
-                  className="p-1 hover:bg-red-100 rounded transition-colors"
-                >
-                  <Trash2 size={16} className="text-red-400" />
-                </button>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </div>
