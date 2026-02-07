@@ -121,7 +121,6 @@ const TaskManager: React.FC = () => {
   ];
 
   const allTasksReversed = tasks.filter(t => !t.isHabit).slice().reverse();
-  ];
 
   return (
     <div className="page-container max-w-lg mx-auto">
