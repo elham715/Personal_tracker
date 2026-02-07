@@ -119,9 +119,10 @@ const connectDB = async () => {
   } catch (error) {
     console.error(`❌ Error connecting to PostgreSQL: ${error.message}`);
     console.error(`   Full error:`, error);
-    // Don't process.exit in serverless
+    // Don't crash in serverless
     if (process.env.VERCEL) {
-      throw error;
+      console.error('⚠️ Serverless DB init failed, queries will connect lazily');
+      return;
     }
     process.exit(1);
   }

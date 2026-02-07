@@ -17,8 +17,10 @@ import statsRoutes from './routes/stats.js';
 // Load environment variables
 dotenv.config();
 
-// Connect to database
-connectDB();
+// Connect to database (don't crash serverless on failure)
+connectDB().catch(err => {
+  console.error('❌ Database connection failed:', err.message);
+});
 
 // Initialize Express app
 const app = express();
@@ -39,7 +41,12 @@ app.use('/api', limiter);
 // CORS configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://localhost:3000'];
+  : ['http://localhost:5173', 'http://localhost:3000', 'https://personal-tracker-dwge.vercel.app'];
+
+// Always include Vercel frontend
+if (!allowedOrigins.includes('https://personal-tracker-dwge.vercel.app')) {
+  allowedOrigins.push('https://personal-tracker-dwge.vercel.app');
+}
 
 app.use(cors({
   origin: function(origin, callback) {
