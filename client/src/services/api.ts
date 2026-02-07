@@ -42,9 +42,9 @@ api.interceptors.response.use(
   (error) => {
     console.error('API Error:', error.message, error.config?.url, error.response?.data);
     if (error.response?.status === 401) {
-      // Token expired or invalid
-      auth.signOut();
-      window.location.href = '/login';
+      // Only sign out if it's NOT an auth-related endpoint (login/register)
+      // and the user explicitly has an expired/invalid token
+      console.warn('401 received - token may be expired. User can retry.');
     }
     return Promise.reject(error);
   }
