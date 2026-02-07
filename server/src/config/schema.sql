@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(50) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255),
-  avatar VARCHAR(10) DEFAULT '🚀',
+  avatar TEXT DEFAULT '🚀',
   bio VARCHAR(200) DEFAULT 'Building better habits, one day at a time',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

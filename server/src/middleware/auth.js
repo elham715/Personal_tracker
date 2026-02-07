@@ -34,7 +34,7 @@ export const protect = async (req, res, next) => {
               firebaseUid: decodedToken.uid,
               email: decodedToken.email,
               name: decodedToken.name || decodedToken.email.split('@')[0],
-              avatar: decodedToken.picture || '🚀'
+              avatar: '🚀'
             });
             console.log('✅ Created new user:', user.email);
           }

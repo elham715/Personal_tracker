@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(50) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
   password VARCHAR(255),
-  avatar VARCHAR(10) DEFAULT '🚀',
+  avatar TEXT DEFAULT '🚀',
   bio VARCHAR(200) DEFAULT 'Building better habits, one day at a time',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -96,6 +96,9 @@ DO $$ BEGIN
       FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
   END IF;
 END $$;
+
+-- Fix existing avatar column if it was created as VARCHAR(10)
+ALTER TABLE users ALTER COLUMN avatar TYPE TEXT;
 `;
 
 const connectDB = async () => {
