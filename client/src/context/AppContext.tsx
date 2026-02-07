@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { Habit, Task } from '@/types';
-import { habitsAPI, tasksAPI } from '@/services/api';
 import { auth } from '@/config/firebase';
+import { offlineHabitsAPI, offlineTasksAPI, initialSync } from '@/services/offlineApi';
+import { onSyncStatus, syncNow } from '@/services/syncEngine';
+import { clearLocalData } from '@/services/offlineDb';
 
 interface AppContextType {
   // Habits
@@ -22,9 +24,12 @@ interface AppContextType {
   toggleTask: (id: string) => Promise<void>;
   getTasksForDate: (date: string) => Task[];
   
-  // Loading state
+  // Loading & sync state
   loading: boolean;
   error: string | null;
+  syncStatus: 'idle' | 'syncing' | 'error' | 'offline';
+  pendingChanges: number;
+  forceSync: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -35,74 +40,83 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error' | 'offline'>(
+    navigator.onLine ? 'idle' : 'offline'
+  );
+  const [pendingChanges, setPendingChanges] = useState(0);
   const inflightRef = useRef<Set<string>>(new Set());
 
-  // Load data on mount and when auth state changes
+  // Helper: refresh UI from local IndexedDB
+  const refreshFromLocal = useCallback(async () => {
+    try {
+      const [h, th, t] = await Promise.all([
+        offlineHabitsAPI.getAll(),
+        offlineHabitsAPI.getTrashed(),
+        offlineTasksAPI.getAll(),
+      ]);
+      setHabits(h);
+      setTrashedHabits(th);
+      setTasks(t);
+    } catch (err) {
+      console.error('Failed to read local DB:', err);
+    }
+  }, []);
+
+  // Listen for sync status changes → refresh UI after sync completes
   useEffect(() => {
-    const loadData = async () => {
-      const user = auth.currentUser;
-      if (!user) {
-        console.log('No user authenticated, skipping data load');
-        setHabits([]);
-        setTrashedHabits([]);
-        setTasks([]);
-        setLoading(false);
-        return;
+    const unsub = onSyncStatus((status, pending) => {
+      setSyncStatus(status);
+      setPendingChanges(pending);
+      // After a successful sync, refresh UI from local DB (which now has server data)
+      if (status === 'idle') {
+        refreshFromLocal();
       }
+    });
+    return unsub;
+  }, [refreshFromLocal]);
 
-      try {
-        console.log('Loading data for user:', user.uid);
-        setLoading(true);
-        const [habitsRes, trashedRes, tasksRes] = await Promise.all([
-          habitsAPI.getAll(),
-          habitsAPI.getTrashed(),
-          tasksAPI.getAll(),
-        ]);
-        
-        console.log('Habits response:', habitsRes.data);
-        console.log('Trashed response:', trashedRes.data);
-        console.log('Tasks response:', tasksRes.data);
-        
-        // Backend returns { success: true, data: [...] }
-        const activeHabits = Array.isArray(habitsRes.data.data) ? habitsRes.data.data : [];
-        const deletedHabits = Array.isArray(trashedRes.data.data) ? trashedRes.data.data : [];
-        
-        console.log('Active habits:', activeHabits.length);
-        console.log('Deleted habits:', deletedHabits.length);
-        
-        setHabits(activeHabits);
-        setTrashedHabits(deletedHabits);
-        setTasks(Array.isArray(tasksRes.data.data) ? tasksRes.data.data : []);
-        setError(null);
-      } catch (err: any) {
-        console.error('Failed to load data:', err);
-        console.error('Error details:', err.response?.data);
-        setError(err.response?.data?.message || 'Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Wait a bit for auth to be ready
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+  // Load data on auth state change
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        loadData();
+        setLoading(true);
+        try {
+          // First load from local DB (instant)
+          await refreshFromLocal();
+          // Then trigger a server sync in the background
+          await initialSync();
+          // Refresh again with server data
+          await refreshFromLocal();
+          setError(null);
+        } catch (err: any) {
+          console.error('Load/sync error:', err);
+          // Even if sync fails, local data is shown
+          setError(navigator.onLine ? 'Sync failed — showing cached data' : null);
+        } finally {
+          setLoading(false);
+        }
       } else {
+        // Logged out — clear local data
+        await clearLocalData();
         setHabits([]);
         setTrashedHabits([]);
         setTasks([]);
         setLoading(false);
       }
     });
-
     return () => unsubscribe();
+  }, [refreshFromLocal]);
+
+  const forceSync = useCallback(() => {
+    syncNow();
   }, []);
 
-  // Habit operations
+  // ── Habit operations (offline-first) ──
+
   const addHabit = async (habitData: Omit<Habit, 'id' | 'streak' | 'completedDates' | 'createdAt'>) => {
     try {
-      const response = await habitsAPI.create(habitData);
-      setHabits(prev => [...prev, response.data.data]);
+      const habit = await offlineHabitsAPI.create(habitData);
+      setHabits(prev => [...prev, habit]);
     } catch (err: any) {
       console.error('Failed to add habit:', err);
       throw err;
@@ -111,8 +125,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updateHabit = async (id: string, updates: Partial<Habit>) => {
     try {
-      const response = await habitsAPI.update(id, updates);
-      setHabits(prev => prev.map(h => h.id === id ? response.data.data : h));
+      const updated = await offlineHabitsAPI.update(id, updates);
+      setHabits(prev => prev.map(h => h.id === id ? updated : h));
     } catch (err: any) {
       console.error('Failed to update habit:', err);
       throw err;
@@ -120,7 +134,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteHabit = async (id: string) => {
-    // Optimistic update — move to trash instantly in UI
     const habit = habits.find(h => h.id === id);
     if (habit) {
       setTrashedHabits(prev => [...prev, { ...habit, isTrashed: true }]);
@@ -128,9 +141,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setTasks(prev => prev.filter(t => t.habitId !== id));
     }
     try {
-      await habitsAPI.delete(id);
+      await offlineHabitsAPI.delete(id);
     } catch (err: any) {
-      // Revert on failure
       if (habit) {
         setHabits(prev => [...prev, habit]);
         setTrashedHabits(prev => prev.filter(h => h.id !== id));
@@ -142,8 +154,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const restoreHabit = async (id: string) => {
     try {
-      const response = await habitsAPI.restore(id);
-      setHabits(prev => [...prev, response.data.data]);
+      const restored = await offlineHabitsAPI.restore(id);
+      setHabits(prev => [...prev, restored]);
       setTrashedHabits(prev => prev.filter(h => h.id !== id));
     } catch (err: any) {
       console.error('Failed to restore habit:', err);
@@ -153,7 +165,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const permanentlyDeleteHabit = async (id: string) => {
     try {
-      await habitsAPI.permanentlyDelete(id);
+      await offlineHabitsAPI.permanentlyDelete(id);
       setTrashedHabits(prev => prev.filter(h => h.id !== id));
     } catch (err: any) {
       console.error('Failed to permanently delete habit:', err);
@@ -162,40 +174,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const toggleHabitDate = async (id: string, date: string) => {
-    // Debounce: skip if a request for this habit+date is already in-flight
     const key = `habit_${id}_${date}`;
     if (inflightRef.current.has(key)) return;
     inflightRef.current.add(key);
 
-    // Optimistic update — toggle instantly in UI
-    const prev = habits.find(h => h.id === id);
-    if (prev) {
-      const alreadyDone = prev.completedDates.includes(date);
-      const optimistic = {
-        ...prev,
-        completedDates: alreadyDone
-          ? prev.completedDates.filter(d => d !== date)
-          : [...prev.completedDates, date],
-        streak: alreadyDone ? Math.max(0, prev.streak - 1) : prev.streak + 1,
-      };
-      setHabits(hs => hs.map(h => h.id === id ? optimistic : h));
-    }
     try {
-      const response = await habitsAPI.toggleDate(id, date);
-      setHabits(hs => hs.map(h => h.id === id ? response.data.data : h));
+      const updated = await offlineHabitsAPI.toggleDate(id, date);
+      setHabits(hs => hs.map(h => h.id === id ? updated : h));
     } catch (err: any) {
-      if (prev) setHabits(hs => hs.map(h => h.id === id ? prev : h));
       console.error('Failed to toggle habit date:', err);
     } finally {
       inflightRef.current.delete(key);
     }
   };
 
-  // Task operations
+  // ── Task operations (offline-first) ──
+
   const addTask = async (taskData: Omit<Task, 'id' | 'createdAt'>) => {
     try {
-      const response = await tasksAPI.create(taskData);
-      setTasks(prev => [...prev, response.data.data]);
+      const task = await offlineTasksAPI.create(taskData);
+      setTasks(prev => [...prev, task]);
     } catch (err: any) {
       console.error('Failed to add task:', err);
       throw err;
@@ -204,8 +202,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updateTask = async (id: string, updates: Partial<Task>) => {
     try {
-      const response = await tasksAPI.update(id, updates);
-      setTasks(prev => prev.map(t => t.id === id ? response.data.data : t));
+      const updated = await offlineTasksAPI.update(id, updates);
+      setTasks(prev => prev.map(t => t.id === id ? updated : t));
     } catch (err: any) {
       console.error('Failed to update task:', err);
       throw err;
@@ -213,13 +211,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteTask = async (id: string) => {
-    // Optimistic update — remove instantly from UI
     const prev = tasks;
     setTasks(ts => ts.filter(t => t.id !== id));
     try {
-      await tasksAPI.delete(id);
+      await offlineTasksAPI.delete(id);
     } catch (err: any) {
-      // Revert on failure
       setTasks(prev);
       console.error('Failed to delete task:', err);
       throw err;
@@ -227,22 +223,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const toggleTask = async (id: string) => {
-    // Debounce: skip if a request for this task is already in-flight
     const key = `task_${id}`;
     if (inflightRef.current.has(key)) return;
     inflightRef.current.add(key);
 
-    // Optimistic update — toggle instantly in UI
-    const prev = tasks.find(t => t.id === id);
-    if (prev) {
-      setTasks(ts => ts.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-    }
     try {
-      const response = await tasksAPI.toggle(id);
-      setTasks(ts => ts.map(t => t.id === id ? response.data.data : t));
+      const toggled = await offlineTasksAPI.toggle(id);
+      setTasks(ts => ts.map(t => t.id === id ? toggled : t));
     } catch (err: any) {
-      if (prev) setTasks(ts => ts.map(t => t.id === id ? prev : t));
       console.error('Failed to toggle task:', err);
+      await refreshFromLocal();
     } finally {
       inflightRef.current.delete(key);
     }
@@ -269,6 +259,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     getTasksForDate,
     loading,
     error,
+    syncStatus,
+    pendingChanges,
+    forceSync,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

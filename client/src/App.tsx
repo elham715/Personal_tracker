@@ -36,7 +36,7 @@ const AppLayout: React.FC = () => (
   <AppProvider>
     <div className="min-h-screen">
       <Sidebar />
-      <main className="lg:ml-[220px] min-h-screen">
+      <main className="pt-11 lg:pt-0 lg:ml-[220px] min-h-screen">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/tasks" element={<TaskManager />} />

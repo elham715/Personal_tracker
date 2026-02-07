@@ -2,16 +2,21 @@ import axios from 'axios';
 import { auth } from '@/config/firebase';
 import { Capacitor } from '@capacitor/core';
 
+// Deployed backend URL
+const PRODUCTION_API = 'https://personal-tracker-dun.vercel.app/api';
+
 // Auto-detect API URL:
-// 1. Use env var if set
-// 2. If running as native app (Capacitor), use deployed backend
-// 3. If on a non-localhost web host, use deployed backend
-// 4. Otherwise use local dev server
+// 1. Native app (Capacitor on phone) → ALWAYS use deployed backend
+// 2. Env var if set (local web dev)
+// 3. Non-localhost web host → deployed backend
+// 4. Fallback → local dev server
 const isNative = Capacitor.isNativePlatform();
-const API_URL = import.meta.env.VITE_API_URL
-  || (isNative || window.location.hostname !== 'localhost'
-    ? 'https://personal-tracker-dun.vercel.app/api'
-    : 'http://localhost:5000/api');
+const API_URL = isNative
+  ? PRODUCTION_API
+  : (import.meta.env.VITE_API_URL
+    || (window.location.hostname !== 'localhost'
+      ? PRODUCTION_API
+      : 'http://localhost:5001/api'));
 
 // Create axios instance with default config
 const api = axios.create({
