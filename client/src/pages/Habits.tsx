@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ChevronDown, BookOpen, Sparkles, Quote } from 'lucide-react';
+import { ChevronDown, BookOpen, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -572,42 +572,34 @@ const Habits: React.FC = () => {
       </div>
 
       {/* ── Daily Habit Quote ── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 rounded-2xl p-6 lg:p-8 shadow-xl shadow-indigo-900/20 animate-fade-up">
+      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 rounded-2xl px-5 py-4 lg:px-7 lg:py-5 shadow-xl shadow-indigo-900/20 animate-fade-up">
         {/* Decorative background elements */}
-        <div className="absolute top-4 right-5 text-white/[0.04] text-[100px] lg:text-[140px] font-serif leading-none select-none pointer-events-none">"</div>
-        <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl" />
-        <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/3 w-20 h-20 bg-pink-500/10 rounded-full blur-2xl" />
+        <div className="absolute top-2 right-4 text-white/[0.04] text-[80px] lg:text-[100px] font-serif leading-none select-none pointer-events-none">"</div>
+        <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl" />
+        <div className="absolute top-0 right-0 w-28 h-28 bg-purple-500/10 rounded-full blur-3xl" />
 
-        {/* Top label */}
-        <div className="flex items-center gap-2.5 mb-5 relative z-10">
-          <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <Sparkles size={16} className="text-white" />
+        {/* Top row: icon + label + quote number */}
+        <div className="flex items-center gap-2 mb-3 relative z-10">
+          <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/30">
+            <Sparkles size={13} className="text-white" />
           </div>
-          <div>
-            <p className="text-[10px] text-indigo-300/70 uppercase tracking-[0.2em] font-bold">Daily Wisdom</p>
-            <p className="text-[11px] text-white/40">Quote #{dailyQuote.number} of {HABIT_QUOTES.length}</p>
-          </div>
-        </div>
-
-        {/* Quote icon */}
-        <div className="mb-4 relative z-10">
-          <Quote size={22} className="text-indigo-400/40" />
+          <p className="text-[10px] text-indigo-300/70 uppercase tracking-[0.15em] font-bold">Daily Wisdom</p>
+          <span className="text-[10px] text-white/25 ml-auto">#{dailyQuote.number}/{HABIT_QUOTES.length}</span>
         </div>
 
         {/* Quote text */}
-        <p className="text-[18px] lg:text-[22px] font-semibold text-white/95 leading-relaxed relative z-10 tracking-[-0.01em]">
-          {dailyQuote.text}
+        <p className="text-[16px] lg:text-[20px] font-semibold text-white/95 leading-snug relative z-10 tracking-[-0.01em]">
+          "{dailyQuote.text}"
         </p>
 
         {/* Bottom accent */}
-        <div className="mt-6 flex items-center gap-3 relative z-10">
-          <div className="h-px flex-1 bg-gradient-to-r from-white/20 to-transparent" />
-          <span className="text-[10px] text-white/30 font-medium flex items-center gap-1.5">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400/60" />
-            New quote every day
+        <div className="mt-3 flex items-center gap-2.5 relative z-10">
+          <div className="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent" />
+          <span className="text-[9px] text-white/25 font-medium flex items-center gap-1">
+            <span className="inline-block w-1 h-1 rounded-full bg-emerald-400/60" />
+            Changes daily
           </span>
-          <div className="h-px flex-1 bg-gradient-to-l from-white/20 to-transparent" />
+          <div className="h-px flex-1 bg-gradient-to-l from-white/15 to-transparent" />
         </div>
       </div>
 
