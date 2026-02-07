@@ -70,8 +70,7 @@ export const isToday = (dateStr) => {
  * @returns {boolean}
  */
 export const isFuture = (dateStr) => {
-  const date = new Date(dateStr);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return date.getTime() > today.getTime();
+  // Compare as plain YYYY-MM-DD strings to avoid timezone issues
+  const todayStr = new Date().toLocaleDateString('en-CA'); // 'en-CA' gives YYYY-MM-DD
+  return dateStr > todayStr;
 };

@@ -12,7 +12,6 @@ import TaskManager from '@/pages/TaskManager';
 import Habits from '@/pages/Habits';
 import Everyday from '@/pages/Everyday';
 import HabitManager from '@/pages/HabitManager';
-import Trash from '@/pages/Trash';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<any>(undefined);
@@ -44,7 +43,6 @@ const AppLayout: React.FC = () => (
           <Route path="/habits" element={<Habits />} />
           <Route path="/everyday" element={<Everyday />} />
           <Route path="/habit-manager" element={<HabitManager />} />
-          <Route path="/trash" element={<Trash />} />
         </Routes>
       </main>
     </div>

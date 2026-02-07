@@ -28,31 +28,18 @@ const app = express();
 // Security middleware
 app.use(helmet());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api', limiter);
-
-// CORS configuration
+// CORS configuration — must come BEFORE rate limiter so 429s still get CORS headers
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',')
   : ['http://localhost:5173', 'http://localhost:3000', 'https://personal-tracker-dwge.vercel.app'];
 
-// Always include Vercel frontend
 if (!allowedOrigins.includes('https://personal-tracker-dwge.vercel.app')) {
   allowedOrigins.push('https://personal-tracker-dwge.vercel.app');
 }
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
-    
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -61,6 +48,16 @@ app.use(cors({
   },
   credentials: true
 }));
+
+// Rate limiting — generous for a personal app
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 500,
+  message: { success: false, message: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', limiter);
 
 // Body parser middleware
 app.use(express.json());

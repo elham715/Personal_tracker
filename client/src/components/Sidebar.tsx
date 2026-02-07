@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { auth } from '@/config/firebase';
-import { Home, CheckSquare, Target, Calendar, Settings, Trash2, LogOut } from 'lucide-react';
+import { Home, CheckSquare, Target, Calendar, Settings, LogOut } from 'lucide-react';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -19,11 +19,6 @@ const Sidebar: React.FC = () => {
     { path: '/habits', icon: Target, label: 'Habits' },
     { path: '/everyday', icon: Calendar, label: 'Calendar' },
     { path: '/habit-manager', icon: Settings, label: 'Manage' },
-  ];
-
-  const desktopNav = [
-    ...tabs,
-    { path: '/trash', icon: Trash2, label: 'Trash' },
   ];
 
   return (
@@ -53,7 +48,7 @@ const Sidebar: React.FC = () => {
           <h1 className="text-[15px] font-bold text-gray-900 tracking-tight">Habit Tracker</h1>
         </div>
         <nav className="flex-1 px-3 space-y-0.5">
-          {desktopNav.map(({ path, icon: Icon, label }) => {
+          {tabs.map(({ path, icon: Icon, label }) => {
             const active = isActive(path);
             return (
               <Link key={path} to={path}

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Habit, Task } from '@/types';
 import { habitsAPI, tasksAPI } from '@/services/api';
 import { auth } from '@/config/firebase';
@@ -35,6 +35,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const inflightRef = useRef<Set<string>>(new Set());
 
   // Load data on mount and when auth state changes
   useEffect(() => {
@@ -118,15 +119,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteHabit = async (id: string) => {
+    // Optimistic update — move to trash instantly in UI
+    const habit = habits.find(h => h.id === id);
+    if (habit) {
+      setTrashedHabits(prev => [...prev, { ...habit, isTrashed: true }]);
+      setHabits(prev => prev.filter(h => h.id !== id));
+      setTasks(prev => prev.filter(t => t.habitId !== id));
+    }
     try {
       await habitsAPI.update(id, { isTrashed: true });
-      const habit = habits.find(h => h.id === id);
-      if (habit) {
-        setTrashedHabits(prev => [...prev, { ...habit, isTrashed: true }]);
-        setHabits(prev => prev.filter(h => h.id !== id));
-        setTasks(prev => prev.filter(t => t.habitId !== id));
-      }
     } catch (err: any) {
+      // Revert on failure
+      if (habit) {
+        setHabits(prev => [...prev, habit]);
+        setTrashedHabits(prev => prev.filter(h => h.id !== id));
+      }
       console.error('Failed to delete habit:', err);
       throw err;
     }
@@ -158,15 +165,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const toggleHabitDate = async (id: string, date: string) => {
+    // Debounce: skip if a request for this habit+date is already in-flight
+    const key = `habit_${id}_${date}`;
+    if (inflightRef.current.has(key)) return;
+    inflightRef.current.add(key);
+
+    // Optimistic update — toggle instantly in UI
+    const prev = habits.find(h => h.id === id);
+    if (prev) {
+      const alreadyDone = prev.completedDates.includes(date);
+      const optimistic = {
+        ...prev,
+        completedDates: alreadyDone
+          ? prev.completedDates.filter(d => d !== date)
+          : [...prev.completedDates, date],
+        streak: alreadyDone ? Math.max(0, prev.streak - 1) : prev.streak + 1,
+      };
+      setHabits(hs => hs.map(h => h.id === id ? optimistic : h));
+    }
     try {
-      console.log('Toggling habit:', id, 'for date:', date);
       const response = await habitsAPI.toggleDate(id, date);
-      console.log('Toggle response:', response.data);
-      setHabits(prev => prev.map(h => h.id === id ? response.data.data : h));
+      setHabits(hs => hs.map(h => h.id === id ? response.data.data : h));
     } catch (err: any) {
+      if (prev) setHabits(hs => hs.map(h => h.id === id ? prev : h));
       console.error('Failed to toggle habit date:', err);
-      console.error('Error details:', err.response?.data);
-      throw err;
+    } finally {
+      inflightRef.current.delete(key);
     }
   };
 
@@ -192,25 +216,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const deleteTask = async (id: string) => {
+    // Optimistic update — remove instantly from UI
+    const prev = tasks;
+    setTasks(ts => ts.filter(t => t.id !== id));
     try {
       await tasksAPI.delete(id);
-      setTasks(prev => prev.filter(t => t.id !== id));
     } catch (err: any) {
+      // Revert on failure
+      setTasks(prev);
       console.error('Failed to delete task:', err);
       throw err;
     }
   };
 
   const toggleTask = async (id: string) => {
+    // Debounce: skip if a request for this task is already in-flight
+    const key = `task_${id}`;
+    if (inflightRef.current.has(key)) return;
+    inflightRef.current.add(key);
+
+    // Optimistic update — toggle instantly in UI
+    const prev = tasks.find(t => t.id === id);
+    if (prev) {
+      setTasks(ts => ts.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    }
     try {
-      console.log('Toggling task:', id);
       const response = await tasksAPI.toggle(id);
-      console.log('Toggle task response:', response.data);
-      setTasks(prev => prev.map(t => t.id === id ? response.data.data : t));
+      setTasks(ts => ts.map(t => t.id === id ? response.data.data : t));
     } catch (err: any) {
+      if (prev) setTasks(ts => ts.map(t => t.id === id ? prev : t));
       console.error('Failed to toggle task:', err);
-      console.error('Error details:', err.response?.data);
-      throw err;
+    } finally {
+      inflightRef.current.delete(key);
     }
   };
 

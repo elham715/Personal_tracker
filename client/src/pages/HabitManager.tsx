@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, RotateCcw, ChevronDown } from 'lucide-react';
 import { HABIT_ICONS, HABIT_CATEGORIES, HABIT_COLORS } from '@/utils/constants';
 
 const HabitManager: React.FC = () => {
-  const { habits, addHabit, deleteHabit } = useApp();
+  const { habits, addHabit, deleteHabit, trashedHabits, restoreHabit, permanentlyDeleteHabit } = useApp();
   const [showForm, setShowForm] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
   const [form, setForm] = useState({ name: '', icon: '✨', category: 'Health', color: 'purple', target: 1 });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -121,6 +122,51 @@ const HabitManager: React.FC = () => {
           <p className="text-[12px] text-gray-400">Tap "New" to get started</p>
         </div>
       ) : null}
+
+      {/* ── Trash Section ── */}
+      <div className="mt-6 animate-fade-up">
+        <button onClick={() => setShowTrash(!showTrash)}
+          className="flex items-center gap-2 w-full px-1 py-2 text-left group">
+          <Trash2 size={15} className="text-gray-400" />
+          <span className="text-[13px] font-semibold text-gray-500">Trash</span>
+          {trashedHabits.length > 0 && (
+            <span className="text-[10px] font-bold bg-red-100 text-red-500 px-1.5 py-0.5 rounded-full">
+              {trashedHabits.length}
+            </span>
+          )}
+          <ChevronDown size={14} className={`ml-auto text-gray-400 transition-transform duration-200 ${
+            showTrash ? 'rotate-180' : ''
+          }`} />
+        </button>
+
+        {showTrash && (
+          <div className="mt-2 space-y-1.5 animate-scale-in">
+            {trashedHabits.length > 0 ? (
+              trashedHabits.map(habit => (
+                <div key={habit.id} className="bg-white rounded-xl p-3.5 flex items-center gap-3">
+                  <span className="text-lg opacity-40">{habit.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-[14px] font-medium text-gray-500 truncate">{habit.name}</h3>
+                    <p className="text-[11px] text-gray-400">{habit.category}</p>
+                  </div>
+                  <button onClick={() => restoreHabit(habit.id)}
+                    className="p-1.5 rounded-lg hover:bg-green-50 transition-colors" title="Restore">
+                    <RotateCcw size={15} className="text-emerald-500" />
+                  </button>
+                  <button onClick={() => window.confirm(`Permanently delete "${habit.name}"?`) && permanentlyDeleteHabit(habit.id)}
+                    className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete permanently">
+                    <Trash2 size={15} className="text-red-400" />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <div className="bg-white/60 rounded-xl p-5 text-center">
+                <p className="text-[12px] text-gray-400">Trash is empty</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
