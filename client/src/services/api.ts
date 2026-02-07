@@ -66,6 +66,12 @@ export const habitsAPI = {
   
   toggleDate: (id: string, date: string) =>
     api.patch(`/habits/${id}/toggle`, { date }),
+
+  restore: (id: string) => api.patch(`/habits/${id}/restore`),
+
+  getTrashed: () => api.get('/trash'),
+
+  permanentlyDelete: (id: string) => api.delete(`/trash/${id}`),
 };
 
 // Tasks API

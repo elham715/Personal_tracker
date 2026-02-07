@@ -53,18 +53,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       try {
         console.log('Loading data for user:', user.uid);
         setLoading(true);
-        const [habitsRes, tasksRes] = await Promise.all([
+        const [habitsRes, trashedRes, tasksRes] = await Promise.all([
           habitsAPI.getAll(),
+          habitsAPI.getTrashed(),
           tasksAPI.getAll(),
         ]);
         
         console.log('Habits response:', habitsRes.data);
+        console.log('Trashed response:', trashedRes.data);
         console.log('Tasks response:', tasksRes.data);
         
-        // Backend returns { success: true, data: [...] }, so access .data.data
-        const allHabits = Array.isArray(habitsRes.data.data) ? habitsRes.data.data : [];
-        const activeHabits = allHabits.filter((h: Habit) => !h.isTrashed);
-        const deletedHabits = allHabits.filter((h: Habit) => h.isTrashed);
+        // Backend returns { success: true, data: [...] }
+        const activeHabits = Array.isArray(habitsRes.data.data) ? habitsRes.data.data : [];
+        const deletedHabits = Array.isArray(trashedRes.data.data) ? trashedRes.data.data : [];
         
         console.log('Active habits:', activeHabits.length);
         console.log('Deleted habits:', deletedHabits.length);
@@ -127,7 +128,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setTasks(prev => prev.filter(t => t.habitId !== id));
     }
     try {
-      await habitsAPI.update(id, { isTrashed: true });
+      await habitsAPI.delete(id);
     } catch (err: any) {
       // Revert on failure
       if (habit) {
@@ -141,11 +142,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const restoreHabit = async (id: string) => {
     try {
-      const response = await habitsAPI.update(id, { 
-        isTrashed: false,
-        completedDates: [],
-        streak: 0
-      });
+      const response = await habitsAPI.restore(id);
       setHabits(prev => [...prev, response.data.data]);
       setTrashedHabits(prev => prev.filter(h => h.id !== id));
     } catch (err: any) {
@@ -156,7 +153,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const permanentlyDeleteHabit = async (id: string) => {
     try {
-      await habitsAPI.delete(id);
+      await habitsAPI.permanentlyDelete(id);
       setTrashedHabits(prev => prev.filter(h => h.id !== id));
     } catch (err: any) {
       console.error('Failed to permanently delete habit:', err);
