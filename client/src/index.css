@@ -11,6 +11,11 @@
   }
 }
 
+/* Scale up for desktop — feels like 125% browser zoom */
+@media (min-width: 1024px) {
+  html { zoom: 1.2; }
+}
+
 @layer components {
   .page-container {
     @apply px-5 pt-2 pb-28 lg:px-10 lg:pt-6 lg:pb-10;
