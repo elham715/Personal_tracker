@@ -91,6 +91,7 @@ const Register: React.FC = () => {
               onChange={(e) => setName(e.target.value)}
               className="input-field w-full"
               placeholder="John Doe"
+              autoComplete="name"
               required
             />
           </div>
@@ -105,6 +106,7 @@ const Register: React.FC = () => {
               onChange={(e) => setEmail(e.target.value)}
               className="input-field w-full"
               placeholder="you@example.com"
+              autoComplete="email"
               required
             />
           </div>
@@ -119,6 +121,7 @@ const Register: React.FC = () => {
               onChange={(e) => setPassword(e.target.value)}
               className="input-field w-full"
               placeholder="••••••••"
+              autoComplete="new-password"
               required
             />
           </div>
@@ -133,6 +136,7 @@ const Register: React.FC = () => {
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="input-field w-full"
               placeholder="••••••••"
+              autoComplete="new-password"
               required
             />
           </div>

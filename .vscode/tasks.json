@@ -101,6 +101,11 @@
 			"label": "Git Push 2",
 			"type": "shell",
 			"command": "cd /Users/admin/Downloads/personal-dashboard-habit-tracker\\ 2 && git add -A && git commit -m 'Fix serverless deploy: inline schema, add forgot password' && git push origin main"
+		},
+		{
+			"label": "Check Vercel",
+			"type": "shell",
+			"command": "sleep 30 && curl -s https://personal-tracker-dun.vercel.app/ | head -c 500"
 		}
 	]
 }
