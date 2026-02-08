@@ -123,7 +123,7 @@ const Memory: React.FC = () => {
   };
 
   if (!profile) return (
-    <div className="page-container flex items-center justify-center min-h-[60vh]">
+    <div className="page-container max-w-lg lg:max-w-4xl mx-auto flex items-center justify-center min-h-[60vh]">
       <div className="w-8 h-8 border-3 border-purple-600 border-t-transparent rounded-full animate-spin" />
     </div>
   );
@@ -145,15 +145,15 @@ const Memory: React.FC = () => {
   if (view === 'result' && selectedGame) {
     const stars = lastAccuracy >= 90 ? 3 : lastAccuracy >= 60 ? 2 : lastAccuracy >= 30 ? 1 : 0;
     return (
-      <div className="page-container max-w-lg mx-auto pb-24 flex flex-col items-center justify-center min-h-[70vh] text-center">
+      <div className="page-container max-w-lg lg:max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[70vh] text-center">
         {newBrainLevel && (
-          <div className="mb-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-5 py-2.5 rounded-full text-sm font-bold animate-pop-in shadow-lg shadow-amber-400/30">
+          <div className="mb-4 bg-gradient-to-r from-amber-400 to-orange-500 text-white px-5 py-2.5 rounded-full text-sm lg:text-base font-bold animate-pop-in shadow-lg shadow-amber-400/30">
             🧠 Brain Level Up! → Level {profile.brainLevel}
           </div>
         )}
 
-        <div className="text-5xl mb-2 animate-float">{selectedGame.icon}</div>
-        <h2 className="text-xl font-bold text-gray-900">{selectedGame.name}</h2>
+        <div className="text-5xl lg:text-6xl mb-2 animate-float">{selectedGame.icon}</div>
+        <h2 className="text-xl lg:text-2xl font-bold text-gray-900">{selectedGame.name}</h2>
         <p className="text-xs text-gray-400 mb-4">Level {profile.gameLevels[selectedGame.id] || 1}</p>
 
         {/* Star Rating */}
@@ -166,7 +166,7 @@ const Memory: React.FC = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 my-4 w-full max-w-[280px]">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 my-4 w-full max-w-sm lg:max-w-lg">
           <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-100">
             <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Score</p>
             <p className="text-2xl font-black text-indigo-600">{lastScore}</p>
@@ -197,7 +197,7 @@ const Memory: React.FC = () => {
           <p className="text-xs text-amber-600 font-bold mb-3">🏆 New High Score!</p>
         )}
 
-        <div className="flex gap-3 mt-3 w-full max-w-[280px]">
+        <div className="flex gap-3 mt-3 w-full max-w-sm">
           <button onClick={() => { setView('countdown'); }}
             className="flex-1 py-3 bg-indigo-600 text-white text-sm font-bold rounded-xl active:scale-95 transition-transform shadow-md shadow-indigo-600/30">
             Play Again
@@ -217,7 +217,7 @@ const Memory: React.FC = () => {
   if (view === 'playing' && selectedGame) {
     const level = profile.gameLevels[selectedGame.id] || 1;
     return (
-      <div className="page-container max-w-lg mx-auto pb-24">
+      <div className="page-container max-w-lg lg:max-w-2xl mx-auto">
         {/* Game Header */}
         <div className="flex items-center justify-between pt-2 mb-4">
           <button onClick={() => setView('hub')} className="flex items-center gap-1 text-gray-400 text-sm font-medium">
@@ -260,10 +260,10 @@ const Memory: React.FC = () => {
      ═══════════════════════════════════════════════════════════════ */
   if (view === 'progress') {
     return (
-      <div className="page-container max-w-lg mx-auto pb-24">
+      <div className="page-container max-w-lg lg:max-w-4xl mx-auto">
         <div className="flex items-center gap-3 pt-4 mb-5">
           <button onClick={() => setView('hub')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
-          <h1 className="text-xl font-bold text-gray-900">Your Progress</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Your Progress</h1>
         </div>
 
         {/* Brain Level Card */}
@@ -319,7 +319,7 @@ const Memory: React.FC = () => {
         ); })()}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-4 gap-2 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
           {[
             { label: 'Games', value: profile.gamesPlayed, color: 'text-gray-800' },
             { label: 'Streak', value: `${profile.currentStreak}d`, color: 'text-indigo-600' },
@@ -363,7 +363,7 @@ const Memory: React.FC = () => {
 
         {/* Per-Game Levels */}
         <h3 className="text-sm font-bold text-gray-800 mb-3">Game Mastery</h3>
-        <div className="space-y-2">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
           {GAMES.map(g => {
             const lvl = profile.gameLevels[g.id] || 1;
             const pct = (lvl / 50) * 100;
@@ -398,12 +398,12 @@ const Memory: React.FC = () => {
      ═══════════════════════════════════════════════════════════════ */
   if (view === 'games') {
     return (
-      <div className="page-container max-w-lg mx-auto pb-24">
+      <div className="page-container max-w-lg lg:max-w-4xl mx-auto">
         <div className="flex items-center gap-3 pt-4 mb-5">
           <button onClick={() => setView('hub')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
-          <h1 className="text-xl font-bold text-gray-900">All Games</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">All Games</h1>
         </div>
-        <div className="space-y-2.5">
+        <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
           {GAMES.map((g, idx) => {
             const lvl = profile.gameLevels[g.id] || 1;
             const hs = profile.gameHighScores[g.id] || 0;
@@ -438,13 +438,13 @@ const Memory: React.FC = () => {
      HUB — Main Training Screen
      ═══════════════════════════════════════════════════════════════ */
   return (
-    <div className="page-container max-w-lg mx-auto pb-24">
+    <div className="page-container max-w-lg lg:max-w-4xl mx-auto">
       {/* Header */}
       <div className="pt-4 mb-4 animate-fade-up">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-400 font-medium">Brain Training</p>
-            <h1 className="text-xl font-bold text-gray-900">Memory Lab</h1>
+            <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Memory Lab</h1>
           </div>
           <button onClick={() => setView('progress')} className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-xl text-xs font-bold active:bg-indigo-100 transition-colors">
             <TrendingUp size={14} /> Progress
@@ -537,7 +537,7 @@ const Memory: React.FC = () => {
             <span className="text-[10px] text-gray-400 font-medium">{todayGames.length}/4 done</span>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
           {dailyGames.map((gameId) => {
             const g = GAMES.find(x => x.id === gameId)!;
             const done = todayGames.includes(gameId);
@@ -567,7 +567,7 @@ const Memory: React.FC = () => {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-2 mb-4 animate-fade-up" style={{ animationDelay: '140ms' }}>
+      <div className="grid grid-cols-3 lg:grid-cols-3 gap-2 lg:gap-3 mb-4 animate-fade-up" style={{ animationDelay: '140ms' }}>
         <div className="bg-white rounded-xl p-2.5 text-center shadow-sm border border-gray-100">
           <p className="text-[9px] text-gray-400 font-semibold">Today</p>
           <p className="text-lg font-black text-indigo-600">{todayGames.length}<span className="text-xs text-gray-300 font-bold">/4</span></p>
@@ -618,7 +618,7 @@ const Memory: React.FC = () => {
           </div>
         </div>
         {/* Current & Next Rank */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 lg:gap-3">
           <div className={`flex-1 rounded-xl p-2.5 bg-gradient-to-br ${mastery.current.color} ${mastery.current.colorTo}`}>
             <p className="text-[9px] text-white/60 font-bold">Current Rank</p>
             <p className="text-sm font-bold text-white">{mastery.current.emoji} {mastery.current.title}</p>
@@ -694,13 +694,13 @@ const HandbookView: React.FC<{ onBack: () => void; profile: PlayerProfile }> = (
   const toggle = (i: number) => setOpenChapter(openChapter === i ? null : i);
 
   return (
-    <div className="page-container max-w-lg mx-auto pb-24">
+    <div className="page-container max-w-lg lg:max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 pt-4 mb-2">
         <button onClick={onBack} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
         <div className="flex-1">
           <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">The Handbook</p>
-          <h1 className="text-xl font-bold text-gray-900">Memory Mastery</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Memory Mastery</h1>
         </div>
         <BookOpen size={20} className="text-amber-500" />
       </div>
@@ -720,7 +720,7 @@ const HandbookView: React.FC<{ onBack: () => void; profile: PlayerProfile }> = (
       </div>
 
       {/* Chapters */}
-      <div className="space-y-2.5">
+      <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
 
         {/* Chapter 1 */}
         <HandbookChapter index={0} open={openChapter === 0} onToggle={() => toggle(0)}
@@ -1081,7 +1081,7 @@ const DailyRecallView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   if (phase === 'done') {
     return (
-      <div className="page-container max-w-lg mx-auto pb-24 flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-up">
+      <div className="page-container max-w-lg lg:max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-up">
         <div className="text-5xl mb-3 animate-pop-in">📖</div>
         <h2 className="text-xl font-bold text-gray-900 mb-1">Day Recorded!</h2>
         <p className="text-sm text-gray-400 mb-1">{wordCount} words captured from today</p>
@@ -1102,15 +1102,15 @@ const DailyRecallView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     ];
 
     return (
-      <div className="page-container max-w-lg mx-auto pb-24">
+      <div className="page-container max-w-lg lg:max-w-2xl mx-auto">
         <div className="flex items-center gap-3 pt-4 mb-6">
           <button onClick={() => setPhase('write')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
-          <h1 className="text-xl font-bold text-gray-900">How clear is today?</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">How clear is today?</h1>
         </div>
 
         <p className="text-sm text-gray-500 mb-5">How well do you feel you remembered your day?</p>
 
-        <div className="grid grid-cols-2 gap-2.5 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-6">
           {moods.map(m => (
             <button key={m.val} onClick={() => setMood(m.val)}
               className={`p-4 rounded-2xl text-center transition-all active:scale-95 border-2 ${
@@ -1146,12 +1146,12 @@ const DailyRecallView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }
 
   return (
-    <div className="page-container max-w-lg mx-auto pb-24">
+    <div className="page-container max-w-lg lg:max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 pt-4 mb-2">
         <button onClick={onBack} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">Daily Recall</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Daily Recall</h1>
         </div>
         <Moon size={20} className="text-violet-400" />
       </div>
@@ -1295,12 +1295,12 @@ const RecallHistoryView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   return (
-    <div className="page-container max-w-lg mx-auto pb-24">
+    <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 pt-4 mb-5">
         <button onClick={onBack} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
         <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">My Journal</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900">My Journal</h1>
           <p className="text-[10px] text-gray-400">Your daily memories, preserved forever</p>
         </div>
         <BookOpen size={18} className="text-violet-400" />
@@ -1580,9 +1580,9 @@ const NumberMemoryGame: React.FC<GProps> = ({ level, onFinish }) => {
 
       {phase === 'show' && (
         <div className="animate-scale-in">
-          <div className="bg-white rounded-3xl px-8 py-10 shadow-xl border border-gray-100 min-w-[260px]">
+          <div className="bg-white rounded-3xl px-8 py-10 shadow-xl border border-gray-100 min-w-[260px] lg:min-w-[340px]">
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-3">Memorize</p>
-            <p className="text-4xl font-mono font-black text-indigo-600 tracking-[0.15em] leading-none">{number}</p>
+            <p className="text-3xl sm:text-4xl lg:text-5xl font-mono font-black text-indigo-600 tracking-[0.15em] leading-none">{number}</p>
             <div className="mt-4 w-full">
               <TimerBar duration={params.displayMs as number} running={showTimer} />
             </div>
@@ -1591,7 +1591,7 @@ const NumberMemoryGame: React.FC<GProps> = ({ level, onFinish }) => {
       )}
 
       {phase === 'input' && (
-        <div className="animate-fade-up w-full max-w-xs">
+        <div className="animate-fade-up w-full max-w-xs lg:max-w-sm">
           <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100">
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-3">What was the number?</p>
             <input ref={inputRef} type="tel" value={input} onChange={e => setInput(e.target.value)}
@@ -1607,7 +1607,7 @@ const NumberMemoryGame: React.FC<GProps> = ({ level, onFinish }) => {
 
       {phase === 'feedback' && (
         <div className={`animate-scale-in ${isCorrect ? '' : 'animate-shake'}`}>
-          <div className={`rounded-3xl p-6 min-w-[260px] ${isCorrect ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-red-50 border-2 border-red-200'}`}>
+          <div className={`rounded-3xl p-6 min-w-[260px] lg:min-w-[340px] ${isCorrect ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-red-50 border-2 border-red-200'}`}>
             <p className="text-4xl mb-2">{isCorrect ? '✅' : '❌'}</p>
             <p className={`text-lg font-bold ${isCorrect ? 'text-emerald-700' : 'text-red-600'}`}>
               {isCorrect ? 'Correct!' : 'Wrong'}
@@ -1721,7 +1721,7 @@ const SequenceMemoryGame: React.FC<GProps> = ({ level, onFinish }) => {
       <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}>
         {Array.from({ length: totalCells }).map((_, i) => (
           <button key={i} onClick={() => handleCellClick(i)} disabled={phase !== 'input'}
-            className={`w-14 h-14 rounded-xl transition-all duration-150 border-2 ${
+            className={`w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-xl transition-all duration-150 border-2 ${
               wrongCell === i ? 'bg-red-500 border-red-600 animate-shake'
               : activeCell === i ? `${SEQ_COLORS[i % SEQ_COLORS.length]} border-transparent scale-90 shadow-lg`
               : 'bg-gray-100 border-gray-200 active:bg-gray-200'
@@ -1812,7 +1812,7 @@ const ChimpTestGame: React.FC<GProps> = ({ level, onFinish }) => {
       <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}>
         {cells.map((val, i) => (
           <button key={i} onClick={() => handleClick(i)}
-            className={`w-12 h-12 rounded-xl text-sm font-bold transition-all duration-150 ${
+            className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-xl text-sm font-bold transition-all duration-150 ${
               wrongIdx === i ? 'bg-red-500 text-white animate-shake'
               : val !== null
                 ? hidden
@@ -1904,7 +1904,7 @@ const WordRecallGame: React.FC<GProps> = ({ level, onFinish }) => {
       </div>
 
       <div className="relative">
-        <div className={`bg-white rounded-3xl px-10 py-8 shadow-xl border-2 mb-6 min-w-[240px] transition-all ${
+        <div className={`bg-white rounded-3xl px-10 py-8 shadow-xl border-2 mb-6 min-w-[240px] lg:min-w-[320px] transition-all ${
           feedback === 'correct' ? 'border-emerald-400 animate-flash-correct' : feedback === 'wrong' ? 'border-red-400 animate-shake' : 'border-gray-100'
         }`}>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">
@@ -1918,7 +1918,7 @@ const WordRecallGame: React.FC<GProps> = ({ level, onFinish }) => {
       </div>
 
       <p className="text-xs text-gray-400 mb-3">Have you seen this word?</p>
-      <div className="flex gap-3 w-full max-w-xs">
+      <div className="flex gap-3 w-full max-w-xs lg:max-w-sm">
         <button onClick={() => answer(true)} disabled={!!feedback}
           className="flex-1 py-3.5 bg-emerald-500 text-white font-bold rounded-xl active:scale-95 transition-transform shadow-md shadow-emerald-500/30 disabled:opacity-70">
           SEEN
@@ -2012,12 +2012,11 @@ const VisualPairsGame: React.FC<GProps> = ({ level, onFinish }) => {
           const isMatched = matched.has(i);
           return (
             <button key={i} onClick={() => handleFlip(i)}
-              className={`w-13 h-13 rounded-xl text-xl flex items-center justify-center transition-all duration-200 ${
+              className={`rounded-xl text-xl flex items-center justify-center transition-all duration-200 w-11 h-11 sm:w-13 sm:h-13 lg:w-14 lg:h-14 ${
                 isMatched ? 'bg-emerald-100 border-2 border-emerald-300 scale-90'
                 : isFlipped ? 'bg-white shadow-lg border-2 border-gray-200 scale-105'
                 : 'bg-gradient-to-br from-pink-500 to-rose-600 shadow-md active:scale-95'
-              }`}
-              style={{ width: 52, height: 52 }}>
+              }`}>
               {isFlipped ? emoji : ''}
             </button>
           );
@@ -2116,8 +2115,7 @@ const PatternMatrixGame: React.FC<GProps> = ({ level, onFinish }) => {
       <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}>
         {Array.from({ length: totalCells }).map((_, i) => (
           <button key={i} onClick={() => toggleCell(i)} disabled={phase !== 'input'}
-            className={`w-13 h-13 rounded-xl transition-all duration-200 ${cellColor(i)}`}
-            style={{ width: 48, height: 48 }} />
+            className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-xl transition-all duration-200 ${cellColor(i)}`} />
         ))}
       </div>
 
@@ -2204,10 +2202,10 @@ const SpeedMatchGame: React.FC<GProps> = ({ level, onFinish }) => {
       </div>
 
       <div className="relative mb-2">
-        <div className={`bg-white rounded-3xl w-32 h-32 flex items-center justify-center shadow-xl border-2 transition-all duration-150 ${
+        <div className={`bg-white rounded-3xl w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 flex items-center justify-center shadow-xl border-2 transition-all duration-150 ${
           feedback === 'correct' ? 'border-emerald-400 shadow-emerald-200' : feedback === 'wrong' ? 'border-red-400 animate-shake shadow-red-200' : 'border-gray-100'
         }`}>
-          <span className="text-6xl text-gray-800 select-none">{current}</span>
+          <span className="text-5xl sm:text-6xl lg:text-7xl text-gray-800 select-none">{current}</span>
         </div>
         {feedback && (
           <ScorePop value={feedback === 'correct' ? `+${10 + (streak - 1) * 2}` : 'Miss'} correct={feedback === 'correct'} />
@@ -2217,7 +2215,7 @@ const SpeedMatchGame: React.FC<GProps> = ({ level, onFinish }) => {
       <p className="text-[10px] text-gray-300 mb-1">Previous: <span className="text-gray-500 font-medium">{prev}</span></p>
       <p className="text-xs text-gray-400 font-medium mb-5">Same as previous?</p>
 
-      <div className="flex gap-3 w-full max-w-xs">
+      <div className="flex gap-3 w-full max-w-xs lg:max-w-sm">
         <button onClick={() => answer(true)} disabled={!!feedback}
           className="flex-1 py-3.5 bg-emerald-500 text-white font-bold rounded-xl active:scale-95 transition-transform text-lg shadow-md shadow-emerald-500/30 disabled:opacity-80">
           YES
@@ -2310,7 +2308,7 @@ const MemoryPalaceGame: React.FC<GProps> = ({ level, onFinish }) => {
         </div>
 
         <div key={studyIndex} className="animate-scale-in">
-          <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 text-center min-w-[280px]">
+          <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 text-center min-w-[280px] lg:min-w-[360px]">
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Room {studyIndex + 1}</p>
             <p className="text-4xl mb-1 animate-float">{a.room.emoji}</p>
             <p className="text-sm font-bold text-gray-800 mb-3">{a.room.name}</p>
@@ -2341,7 +2339,7 @@ const MemoryPalaceGame: React.FC<GProps> = ({ level, onFinish }) => {
       </div>
 
       <div key={testIndex} className="animate-fade-up">
-        <div className={`bg-white rounded-3xl p-5 shadow-xl border-2 text-center mb-4 min-w-[280px] transition-all ${
+        <div className={`bg-white rounded-3xl p-5 shadow-xl border-2 text-center mb-4 min-w-[280px] lg:min-w-[360px] transition-all ${
           feedback === 'correct' ? 'border-emerald-400' : feedback === 'wrong' ? 'border-red-400 animate-shake' : 'border-gray-100'
         }`}>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">What was in this room?</p>
@@ -2349,7 +2347,7 @@ const MemoryPalaceGame: React.FC<GProps> = ({ level, onFinish }) => {
           <p className="text-sm font-bold text-gray-800">{assignments[testIndex].room.name}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 w-full max-w-xs">
+        <div className="grid grid-cols-2 gap-2 w-full max-w-xs lg:max-w-sm">
           {options.map((item, i) => {
             let btnClass = 'bg-white border-2 border-gray-100 shadow-sm active:scale-95';
             if (feedback) {
