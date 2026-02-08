@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/helpers';
-import { Flame, Zap, Leaf, Plus, Trash2, Check, Sun, CalendarDays, ListChecks, Calendar, Target } from 'lucide-react';
+import { Flame, Zap, Leaf, Plus, Trash2, Check, Sun, CalendarDays, ListChecks, Calendar, Target, ChevronDown } from 'lucide-react';
 
 /* ── Urgency system — original themed labels ──────────── */
 const URGENCY = {
@@ -38,19 +38,41 @@ const getMonthKey = (d = new Date()) => {
   return `${y}-${m}-01`;
 };
 
-const getWeekLabel = () => {
-  const now = new Date();
-  const day = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+const getWeekLabel = (weekKeyStr?: string) => {
+  const monday = weekKeyStr ? new Date(weekKeyStr + 'T12:00:00') : (() => {
+    const now = new Date();
+    const day = now.getDay();
+    const m = new Date(now);
+    m.setDate(now.getDate() - day + (day === 0 ? -6 : 1));
+    return m;
+  })();
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   return `${fmt(monday)} – ${fmt(sunday)}`;
 };
 
-const getMonthLabel = () => {
-  return new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+const getMonthLabel = (monthKeyStr?: string) => {
+  const d = monthKeyStr ? new Date(monthKeyStr + 'T12:00:00') : new Date();
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+};
+
+const getWeekRelativeLabel = (weekKeyStr: string, currentWeekKey: string) => {
+  if (weekKeyStr === currentWeekKey) return 'This Week';
+  const d1 = new Date(currentWeekKey + 'T12:00:00');
+  const d2 = new Date(weekKeyStr + 'T12:00:00');
+  const weeksAgo = Math.round((d1.getTime() - d2.getTime()) / (7 * 86400000));
+  if (weeksAgo === 1) return 'Last Week';
+  return `${weeksAgo} Weeks Ago`;
+};
+
+const getMonthRelativeLabel = (monthKeyStr: string, currentMonthKey: string) => {
+  if (monthKeyStr === currentMonthKey) return 'This Month';
+  const d1 = new Date(currentMonthKey + 'T12:00:00');
+  const d2 = new Date(monthKeyStr + 'T12:00:00');
+  const monthsAgo = (d1.getFullYear() - d2.getFullYear()) * 12 + (d1.getMonth() - d2.getMonth());
+  if (monthsAgo === 1) return 'Last Month';
+  return `${monthsAgo} Months Ago`;
 };
 
 /* ── Scope tab config ── */
@@ -80,9 +102,26 @@ const TaskManager: React.FC = () => {
   const [newText, setNewText] = useState('');
   const [selectedUrgency, setSelectedUrgency] = useState<Priority>('low');
   const inputRef = useRef<HTMLInputElement>(null);
+  const [expandedPastWeeks, setExpandedPastWeeks] = useState<Set<string>>(new Set());
+  const [expandedPastMonths, setExpandedPastMonths] = useState<Set<string>>(new Set());
   const today = formatDate();
   const weekKey = getWeekKey();
   const monthKey = getMonthKey();
+
+  const toggleExpandWeek = (key: string) => {
+    setExpandedPastWeeks(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+  const toggleExpandMonth = (key: string) => {
+    setExpandedPastMonths(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (composing) setTimeout(() => inputRef.current?.focus(), 120);
@@ -94,13 +133,20 @@ const TaskManager: React.FC = () => {
   }, [scope]);
 
   /* ── Data helpers ── */
-  const getWeekDays = () => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(); d.setDate(d.getDate() + i);
-    return {
-      key: formatDate(d),
-      short: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-    };
-  });
+  const getWeekDays = () => {
+    // Show past 6 days + today (7 days total), oldest first
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i)); // 6 days ago → today
+      const key = formatDate(d);
+      const daysAgo = 6 - i;
+      let short: string;
+      if (daysAgo === 0) short = 'Today';
+      else if (daysAgo === 1) short = 'Yesterday';
+      else short = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      return { key, short, daysAgo };
+    });
+  };
 
   const dailyTasksFor = (dateStr: string) => {
     const fromHabits = habits.filter(h => h?.id && Array.isArray(h.completedDates)).map(h => ({
@@ -137,6 +183,44 @@ const TaskManager: React.FC = () => {
   const todayItems = dailyTasksFor(today);
   const weekItems = scopedTasks('weekly');
   const monthItems = scopedTasks('monthly');
+
+  // Group past weekly tasks by week key
+  const pastWeekGroups = (() => {
+    const weekTasks = tasks.filter(t => !t.isHabit && t.scope === 'weekly' && t.date !== weekKey);
+    const groups: Record<string, typeof weekTasks> = {};
+    weekTasks.forEach(t => {
+      if (!groups[t.date]) groups[t.date] = [];
+      groups[t.date].push(t);
+    });
+    return Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a)) // newest first
+      .map(([key, items]) => ({
+        key,
+        label: getWeekRelativeLabel(key, weekKey),
+        range: getWeekLabel(key),
+        items: sortByUrgencyThenNewest(items),
+        done: items.filter(t => t.completed).length,
+      }));
+  })();
+
+  // Group past monthly tasks by month key
+  const pastMonthGroups = (() => {
+    const monthTasks = tasks.filter(t => !t.isHabit && t.scope === 'monthly' && t.date !== monthKey);
+    const groups: Record<string, typeof monthTasks> = {};
+    monthTasks.forEach(t => {
+      if (!groups[t.date]) groups[t.date] = [];
+      groups[t.date].push(t);
+    });
+    return Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([key, items]) => ({
+        key,
+        label: getMonthRelativeLabel(key, monthKey),
+        monthName: getMonthLabel(key),
+        items: sortByUrgencyThenNewest(items),
+        done: items.filter(t => t.completed).length,
+      }));
+  })();
 
   const getStatsForScope = () => {
     if (scope === 'daily') {
@@ -210,7 +294,29 @@ const TaskManager: React.FC = () => {
     { key: 'all' as const,   label: 'All',   icon: ListChecks, count: tasks.filter(t => !t.isHabit && (t.scope === 'daily' || !t.scope)).length },
   ];
 
-  const allDailyTasks = sortByUrgencyThenNewest(tasks.filter(t => !t.isHabit && (t.scope === 'daily' || !t.scope)).slice().reverse());
+  // Group all daily tasks by date for the "All" view
+  const allDailyGrouped = (() => {
+    const all = tasks.filter(t => !t.isHabit && (t.scope === 'daily' || !t.scope));
+    const groups: Record<string, typeof all> = {};
+    all.forEach(t => {
+      if (!groups[t.date]) groups[t.date] = [];
+      groups[t.date].push(t);
+    });
+    // Sort dates newest first
+    return Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([dateStr, items]) => {
+        const d = new Date(dateStr + 'T12:00:00');
+        const todayStr = formatDate();
+        const yesterdayD = new Date(); yesterdayD.setDate(yesterdayD.getDate() - 1);
+        const yesterdayStr = formatDate(yesterdayD);
+        let label: string;
+        if (dateStr === todayStr) label = 'Today';
+        else if (dateStr === yesterdayStr) label = 'Yesterday';
+        else label = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return { dateStr, label, isToday: dateStr === todayStr, items: sortByUrgencyThenNewest(items) };
+      });
+  })();
 
   const scopeSubtext = scope === 'daily'
     ? (total === 0 ? 'No tasks yet — add one!' : done === total ? '🎉 All done!' : `${total - done} remaining`)
@@ -305,10 +411,20 @@ const TaskManager: React.FC = () => {
         </div>
       )}
 
-      {/* ── Composer ── */}
-      {composing && (
-        <div className="animate-scale-in mb-5">
-          <div className="bg-white rounded-2xl p-4 shadow-md" style={{ boxShadow: composerUrgency.glow }}>
+      {/* ── Inline Add Task Bar / Composer ── */}
+      {!composing ? (
+        <button onClick={() => setComposing(true)}
+          className="w-full flex items-center gap-3 px-4 py-3 mb-4 rounded-2xl border-2 border-dashed border-gray-200 hover:border-indigo-300 hover:bg-indigo-50/30 transition-all group active:scale-[0.98] animate-fade-up">
+          <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${SCOPE_HERO[scope]} flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow`}>
+            <Plus size={15} className="text-white" strokeWidth={2.5} />
+          </div>
+          <span className="text-[14px] text-gray-400 group-hover:text-indigo-500 font-medium transition-colors">
+            {composerPlaceholder[scope]}
+          </span>
+        </button>
+      ) : (
+        <div className="animate-scale-in mb-4">
+          <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-100" style={{ boxShadow: composerUrgency.glow }}>
             <div className="flex items-center gap-3 mb-3">
               <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${composerUrgency.gradient} flex items-center justify-center flex-shrink-0`}>
                 <ComposerIcon size={16} className="text-white" />
@@ -319,33 +435,34 @@ const TaskManager: React.FC = () => {
                 placeholder={composerPlaceholder[scope]}
                 className="flex-1 text-[15px] text-gray-800 font-medium placeholder:text-gray-300 outline-none bg-transparent" />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
               {(Object.entries(URGENCY) as [Priority, typeof URGENCY[Priority]][]).map(([key, val]) => {
                 const ChipIcon = val.icon;
                 return (
                   <button key={key} onClick={() => setSelectedUrgency(key)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold transition-all ${
                       selectedUrgency === key
                         ? `bg-gradient-to-r ${val.gradient} text-white shadow-sm scale-105`
                         : `${val.lightBg} ${val.text} hover:scale-105`
                     }`}>
-                    <ChipIcon size={11} />
+                    <ChipIcon size={10} />
                     {val.label}
                   </button>
                 );
               })}
               <div className="flex-1" />
-              {newText.trim() ? (
-                <button onClick={handleAdd}
-                  className={`px-4 py-1.5 rounded-full text-[11px] font-bold text-white bg-gradient-to-r ${composerUrgency.gradient} shadow-sm hover:shadow-md transition-all active:scale-95`}>
-                  Add →
-                </button>
-              ) : (
-                <button onClick={() => { setComposing(false); setNewText(''); }}
-                  className="text-[11px] font-medium text-gray-400 hover:text-gray-600 transition-colors">
-                  Close
-                </button>
-              )}
+              <button onClick={() => { setComposing(false); setNewText(''); }}
+                className="text-[11px] font-medium text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleAdd} disabled={!newText.trim()}
+                className={`px-4 py-1.5 rounded-full text-[11px] font-bold text-white transition-all active:scale-95 ${
+                  newText.trim()
+                    ? `bg-gradient-to-r ${composerUrgency.gradient} shadow-sm hover:shadow-md`
+                    : 'bg-gray-200 cursor-not-allowed'
+                }`}>
+                Add
+              </button>
             </div>
           </div>
         </div>
@@ -361,16 +478,15 @@ const TaskManager: React.FC = () => {
                 <Sun size={32} className="text-indigo-300" />
               </div>
               <p className="text-[16px] font-semibold text-gray-800">Your day is clear</p>
-              <p className="text-[13px] text-gray-400 mt-1">Tap the button below to plan something</p>
+              <p className="text-[13px] text-gray-400 mt-1">Add a task above to get started</p>
             </div>
           ) : (
             todayItems.map((t, i) => renderTaskCard(t, i))
           )
         )}
 
-        {scope === 'daily' && dailyView === 'week' && getWeekDays().map(day => {
+        {scope === 'daily' && dailyView === 'week' && getWeekDays().reverse().map(day => {
           const items = dailyTasksFor(day.key);
-          if (items.length === 0 && day.key !== today) return null;
           const dayDone = items.filter(t => t.completed).length;
           return (
             <div key={day.key} className="mb-5">
@@ -395,57 +511,168 @@ const TaskManager: React.FC = () => {
         })}
 
         {scope === 'daily' && dailyView === 'all' && (
-          allDailyTasks.length === 0 && !composing ? (
+          allDailyGrouped.length === 0 && !composing ? (
             <div className="text-center py-20 animate-fade-up">
               <p className="text-[14px] text-gray-400">No tasks created yet</p>
             </div>
           ) : (
-            allDailyTasks.map((t, i) => renderTaskCard(t, i))
+            allDailyGrouped.map(group => (
+              <div key={group.dateStr} className="mb-5">
+                <div className="flex items-center gap-2 mb-2 px-1">
+                  <span className={`text-[12px] font-bold uppercase tracking-wider ${group.isToday ? 'text-indigo-500' : 'text-gray-400'}`}>
+                    {group.label}
+                  </span>
+                  <span className="text-[10px] text-gray-300 font-medium">
+                    {group.items.filter(t => t.completed).length}/{group.items.length}
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {group.items.map((t, i) => renderTaskCard(t, i))}
+                </div>
+              </div>
+            ))
           )
         )}
 
         {/* WEEKLY */}
         {scope === 'weekly' && (
-          weekItems.length === 0 && !composing ? (
-            <div className="text-center py-20 animate-fade-up">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-cyan-50 to-blue-50 flex items-center justify-center mx-auto mb-4">
-                <Target size={32} className="text-blue-300" />
+          <>
+            {/* Current week tasks */}
+            {weekItems.length === 0 && !composing && pastWeekGroups.length === 0 ? (
+              <div className="text-center py-20 animate-fade-up">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-cyan-50 to-blue-50 flex items-center justify-center mx-auto mb-4">
+                  <Target size={32} className="text-blue-300" />
+                </div>
+                <p className="text-[16px] font-semibold text-gray-800">No weekly goals yet</p>
+                <p className="text-[13px] text-gray-400 mt-1">Plan what you want to accomplish this week</p>
               </div>
-              <p className="text-[16px] font-semibold text-gray-800">No weekly goals yet</p>
-              <p className="text-[13px] text-gray-400 mt-1">Plan what you want to accomplish this week</p>
-            </div>
-          ) : (
-            weekItems.map((t, i) => renderTaskCard(t, i))
-          )
+            ) : (
+              <>
+                {weekItems.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <span className="text-[12px] font-bold uppercase tracking-wider text-indigo-500">This Week</span>
+                      <span className="text-[10px] text-gray-300 font-medium">
+                        {weekItems.filter(t => t.completed).length}/{weekItems.length}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {weekItems.map((t, i) => renderTaskCard(t, i))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Past week cards */}
+                {pastWeekGroups.length > 0 && (
+                  <div className="mt-6 space-y-3">
+                    <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wider px-1">Previous Weeks</p>
+                    {pastWeekGroups.map(group => {
+                      const isOpen = expandedPastWeeks.has(group.key);
+                      const pctDone = group.items.length > 0 ? Math.round((group.done / group.items.length) * 100) : 0;
+                      return (
+                        <div key={group.key} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
+                          <button onClick={() => toggleExpandWeek(group.key)}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50/50 transition-colors">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center flex-shrink-0">
+                              <CalendarDays size={16} className="text-white" />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <p className="text-[13px] font-semibold text-gray-800">{group.label}</p>
+                              <p className="text-[11px] text-gray-400">{group.range}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${pctDone === 100 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                                {group.done}/{group.items.length}
+                              </span>
+                              <ChevronDown size={16} className={`text-gray-300 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                          </button>
+                          {isOpen && (
+                            <div className="px-4 pb-3 space-y-2 border-t border-gray-50">
+                              <div className="pt-2" />
+                              {group.items.map((t, i) => renderTaskCard(t, i))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
 
         {/* MONTHLY */}
         {scope === 'monthly' && (
-          monthItems.length === 0 && !composing ? (
-            <div className="text-center py-20 animate-fade-up">
-              <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-50 to-fuchsia-50 flex items-center justify-center mx-auto mb-4">
-                <Calendar size={32} className="text-purple-300" />
+          <>
+            {/* Current month tasks */}
+            {monthItems.length === 0 && !composing && pastMonthGroups.length === 0 ? (
+              <div className="text-center py-20 animate-fade-up">
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-violet-50 to-fuchsia-50 flex items-center justify-center mx-auto mb-4">
+                  <Calendar size={32} className="text-purple-300" />
+                </div>
+                <p className="text-[16px] font-semibold text-gray-800">No monthly goals yet</p>
+                <p className="text-[13px] text-gray-400 mt-1">Set big goals for the month ahead</p>
               </div>
-              <p className="text-[16px] font-semibold text-gray-800">No monthly goals yet</p>
-              <p className="text-[13px] text-gray-400 mt-1">Set big goals for the month ahead</p>
-            </div>
-          ) : (
-            monthItems.map((t, i) => renderTaskCard(t, i))
-          )
+            ) : (
+              <>
+                {monthItems.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <span className="text-[12px] font-bold uppercase tracking-wider text-violet-500">This Month</span>
+                      <span className="text-[10px] text-gray-300 font-medium">
+                        {monthItems.filter(t => t.completed).length}/{monthItems.length}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {monthItems.map((t, i) => renderTaskCard(t, i))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Past month cards */}
+                {pastMonthGroups.length > 0 && (
+                  <div className="mt-6 space-y-3">
+                    <p className="text-[11px] text-gray-400 font-medium uppercase tracking-wider px-1">Previous Months</p>
+                    {pastMonthGroups.map(group => {
+                      const isOpen = expandedPastMonths.has(group.key);
+                      const pctDone = group.items.length > 0 ? Math.round((group.done / group.items.length) * 100) : 0;
+                      return (
+                        <div key={group.key} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-fade-up">
+                          <button onClick={() => toggleExpandMonth(group.key)}
+                            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-50/50 transition-colors">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center flex-shrink-0">
+                              <Calendar size={16} className="text-white" />
+                            </div>
+                            <div className="flex-1 text-left">
+                              <p className="text-[13px] font-semibold text-gray-800">{group.label}</p>
+                              <p className="text-[11px] text-gray-400">{group.monthName}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${pctDone === 100 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                                {group.done}/{group.items.length}
+                              </span>
+                              <ChevronDown size={16} className={`text-gray-300 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                            </div>
+                          </button>
+                          {isOpen && (
+                            <div className="px-4 pb-3 space-y-2 border-t border-gray-50">
+                              <div className="pt-2" />
+                              {group.items.map((t, i) => renderTaskCard(t, i))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
 
-      {/* FAB */}
-      <button onClick={() => setComposing(c => !c)}
-        className={`fixed bottom-24 right-5 lg:bottom-8 lg:right-8 z-30
-          w-14 h-14 rounded-2xl shadow-xl flex items-center justify-center 
-          transition-all active:scale-90 hover:shadow-2xl
-          ${composing
-            ? 'bg-gray-900 rotate-[135deg] shadow-gray-400/30'
-            : `bg-gradient-to-br ${SCOPE_HERO[scope]} shadow-indigo-300/50 hover:shadow-indigo-400/60`
-          }`}>
-        <Plus size={22} className="text-white" strokeWidth={2.5} />
-      </button>
     </div>
   );
 };
