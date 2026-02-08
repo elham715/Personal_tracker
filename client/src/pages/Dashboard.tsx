@@ -30,7 +30,7 @@ const Dashboard: React.FC = () => {
   const highPriorityPending = todayTasks.filter(t => !t.completed && t.priority === 'high');
 
   // Memory + Money stats (loaded from local DB)
-  const [memoryStats, setMemoryStats] = useState({ totalCards: 0, dueToday: 0, mastered: 0, accuracy: 0, bestStreak: 0, totalReviews: 0 });
+  const [memoryStats, setMemoryStats] = useState({ brainLevel: 0, totalXP: 0, streak: 0, bestStreak: 0, gamesPlayed: 0, trainedToday: false, todayGames: 0, avgAccuracy: 0 });
   const [moneyStats, setMoneyStats] = useState({ income: 0, expenses: 0, net: 0, transactionCount: 0 });
   const [budgetAlerts, setBudgetAlerts] = useState(0);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -148,13 +148,13 @@ const Dashboard: React.FC = () => {
             <Brain size={18} className="text-white" />
           </div>
           <p className="text-[9px] text-white/50 font-bold uppercase tracking-wider">Memory</p>
-          {memoryStats.totalCards > 0 ? (
-            <p className="text-white text-base font-bold leading-tight">{memoryStats.dueToday} <span className="text-[10px] font-medium text-white/50">due</span></p>
+          {memoryStats.gamesPlayed > 0 ? (
+            <p className="text-white text-base font-bold leading-tight">Lv.{memoryStats.brainLevel}</p>
           ) : (
-            <p className="text-white/60 text-xs font-medium mt-0.5">Start →</p>
+            <p className="text-white/60 text-xs font-medium mt-0.5">Train →</p>
           )}
-          {memoryStats.totalCards > 0 && (
-            <p className="text-[9px] text-white/40 mt-1">{memoryStats.accuracy}% acc</p>
+          {memoryStats.gamesPlayed > 0 && (
+            <p className="text-[9px] text-white/40 mt-1">{memoryStats.trainedToday ? `${memoryStats.todayGames} today ✓` : 'Not trained'}</p>
           )}
         </Link>
 

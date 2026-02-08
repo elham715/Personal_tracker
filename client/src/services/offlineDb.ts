@@ -7,27 +7,29 @@
  * Writes go here immediately, then get synced to the server.
  */
 import Dexie, { type Table } from 'dexie';
-import { Habit, Task, MemoryCard, Transaction, Budget, SavingsGoal, AppNotification } from '@/types';
+import { Habit, Task, GameResult, PlayerProfile, DailyRecall, Transaction, Budget, SavingsGoal, AppNotification } from '@/types';
 
 // ── Sync queue entry ──
 export interface SyncQueueItem {
-  id?: number;               // auto-increment
-  entity: 'habit' | 'task';  // which table
+  id?: number;
+  entity: 'habit' | 'task';
   action: 'create' | 'update' | 'delete' | 'toggleDate' | 'toggle' | 'restore' | 'permanentDelete';
-  entityId: string;           // the habit/task ID
-  payload?: any;              // data for create/update/toggleDate
-  createdAt: number;          // timestamp
-  retries: number;            // retry count
+  entityId: string;
+  payload?: any;
+  createdAt: number;
+  retries: number;
 }
 
 class HabitTrackerDB extends Dexie {
   habits!: Table<Habit & { _dirty?: boolean; _deleted?: boolean }, string>;
   tasks!: Table<Task & { _dirty?: boolean; _deleted?: boolean }, string>;
-  memoryCards!: Table<MemoryCard, string>;
+  gameResults!: Table<GameResult, string>;
+  playerProfile!: Table<PlayerProfile, string>;
   transactions!: Table<Transaction, string>;
   budgets!: Table<Budget, string>;
   savingsGoals!: Table<SavingsGoal, string>;
   notifications!: Table<AppNotification, string>;
+  dailyRecalls!: Table<DailyRecall, string>;
   syncQueue!: Table<SyncQueueItem, number>;
   meta!: Table<{ key: string; value: any }, string>;
 
@@ -53,6 +55,37 @@ class HabitTrackerDB extends Dexie {
       syncQueue: '++id, entity, action, entityId, createdAt',
       meta: 'key',
     });
+
+    // v3: replace memoryCards with brain training tables
+    this.version(3).stores({
+      habits: 'id, name, category, isTrashed',
+      tasks: 'id, date, scope, habitId',
+      gameResults: 'id, game, date, createdAt',
+      playerProfile: 'id',
+      transactions: 'id, date, type, category',
+      budgets: 'id, category, month',
+      savingsGoals: 'id, name, deadline',
+      notifications: 'id, type, read, createdAt',
+      syncQueue: '++id, entity, action, entityId, createdAt',
+      meta: 'key',
+    }).upgrade(tx => {
+      return (tx as any).memoryCards?.clear?.() || Promise.resolve();
+    });
+
+    // v4: add daily recall journal table
+    this.version(4).stores({
+      habits: 'id, name, category, isTrashed',
+      tasks: 'id, date, scope, habitId',
+      gameResults: 'id, game, date, createdAt',
+      playerProfile: 'id',
+      dailyRecalls: 'id, date',
+      transactions: 'id, date, type, category',
+      budgets: 'id, category, month',
+      savingsGoals: 'id, name, deadline',
+      notifications: 'id, type, read, createdAt',
+      syncQueue: '++id, entity, action, entityId, createdAt',
+      meta: 'key',
+    });
   }
 }
 
@@ -62,7 +95,9 @@ export const db = new HabitTrackerDB();
 export async function clearLocalData() {
   await db.habits.clear();
   await db.tasks.clear();
-  await db.memoryCards.clear();
+  await db.gameResults.clear();
+  await db.playerProfile.clear();
+  await db.dailyRecalls.clear();
   await db.transactions.clear();
   await db.budgets.clear();
   await db.savingsGoals.clear();

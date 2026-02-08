@@ -69,13 +69,23 @@ export async function generateNotifications(
       '🚨', 'text-rose-600', '/tasks'));
   }
 
-  // 4. Memory review
+  // 4. Brain training nudge
   try {
-    const dueCards = await db.memoryCards.filter(c => c.nextReview <= today).count();
-    if (dueCards > 0) {
-      notifs.push(makeNotif('memory', '🧠 Cards Due for Review',
-        `${dueCards} card${dueCards > 1 ? 's' : ''} ready to review — strengthen your memory!`,
+    const todayResults = await db.gameResults.where('date').equals(today).count();
+    if (todayResults < 4 && hour >= 9) {
+      notifs.push(makeNotif('memory', '🧠 Train Your Brain',
+        `${4 - todayResults} game${4 - todayResults > 1 ? 's' : ''} left today — build your memory!`,
         '🧠', 'text-purple-600', '/memory'));
+    }
+  } catch {}
+
+  // 4b. Daily Recall journal nudge (evening)
+  try {
+    const todayRecall = await db.dailyRecalls.get(today);
+    if (!todayRecall && hour >= 20 && hour <= 23) {
+      notifs.push(makeNotif('memory', '🌙 Daily Recall Time',
+        'Recall your day before bed — strengthen your memory while you sleep!',
+        '📝', 'text-violet-600', '/memory'));
     }
   } catch {}
 

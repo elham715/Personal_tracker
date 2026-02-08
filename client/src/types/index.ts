@@ -31,21 +31,45 @@ export interface Stats {
   activeDays: number;
 }
 
-/* ── Memory System ── */
-export interface MemoryCard {
+/* ── Brain Training System ── */
+export type GameType = 'number-memory' | 'sequence-memory' | 'chimp-test' | 'word-recall' | 'visual-pairs' | 'pattern-matrix' | 'speed-match' | 'memory-palace';
+
+export interface GameResult {
   id: string;
-  front: string;          // question / term
-  back: string;           // answer / definition
-  category: string;       // e.g. 'Vocabulary', 'Science', 'Custom'
-  difficulty: 'easy' | 'medium' | 'hard';
-  interval: number;       // days until next review (spaced repetition)
-  easeFactor: number;     // SM-2 ease factor (default 2.5)
-  repetitions: number;    // consecutive correct answers
-  nextReview: string;     // YYYY-MM-DD
-  lastReviewed: string;   // YYYY-MM-DD
-  timesReviewed: number;
-  timesCorrect: number;
-  streak: number;         // consecutive correct
+  game: GameType;
+  score: number;           // raw score for that round
+  level: number;           // level achieved in that round
+  xpEarned: number;        // XP awarded
+  accuracy: number;        // 0–100
+  duration: number;        // seconds spent
+  date: string;            // YYYY-MM-DD
+  createdAt: string;
+}
+
+export interface PlayerProfile {
+  id: string;              // always 'player'
+  brainLevel: number;      // overall brain level (1-100)
+  totalXP: number;
+  currentStreak: number;   // daily training streak
+  bestStreak: number;
+  lastTrainedDate: string; // YYYY-MM-DD
+  gamesPlayed: number;
+  /* Per-game progression */
+  gameLevels: Record<GameType, number>;      // current level per game (1-50)
+  gameHighScores: Record<GameType, number>;  // best score per game
+  gamePlays: Record<GameType, number>;       // total plays per game
+  dailyGoalMinutes: number;                  // default 15
+  createdAt: string;
+}
+
+/* ── Daily Recall Journal ── */
+export interface DailyRecall {
+  id: string;              // YYYY-MM-DD (one per day)
+  entries: string[];       // list of things the user recalls
+  mood: 'great' | 'good' | 'okay' | 'foggy'; // how clear the recall felt
+  clarityScore: number;    // 1-10 self-rated
+  date: string;            // YYYY-MM-DD
+  completedAt: string;     // ISO timestamp
   createdAt: string;
 }
 
