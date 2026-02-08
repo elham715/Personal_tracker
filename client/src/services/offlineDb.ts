@@ -1,12 +1,13 @@
 /**
  * Offline Database — IndexedDB via Dexie.js
  *
- * Stores habits, tasks, and a sync queue locally.
+ * Stores habits, tasks, memory cards, transactions, budgets,
+ * savings goals, notifications, and a sync queue locally.
  * All reads come from here first for instant UI.
  * Writes go here immediately, then get synced to the server.
  */
 import Dexie, { type Table } from 'dexie';
-import { Habit, Task } from '@/types';
+import { Habit, Task, MemoryCard, Transaction, Budget, SavingsGoal, AppNotification } from '@/types';
 
 // ── Sync queue entry ──
 export interface SyncQueueItem {
@@ -22,6 +23,11 @@ export interface SyncQueueItem {
 class HabitTrackerDB extends Dexie {
   habits!: Table<Habit & { _dirty?: boolean; _deleted?: boolean }, string>;
   tasks!: Table<Task & { _dirty?: boolean; _deleted?: boolean }, string>;
+  memoryCards!: Table<MemoryCard, string>;
+  transactions!: Table<Transaction, string>;
+  budgets!: Table<Budget, string>;
+  savingsGoals!: Table<SavingsGoal, string>;
+  notifications!: Table<AppNotification, string>;
   syncQueue!: Table<SyncQueueItem, number>;
   meta!: Table<{ key: string; value: any }, string>;
 
@@ -34,6 +40,19 @@ class HabitTrackerDB extends Dexie {
       syncQueue: '++id, entity, action, entityId, createdAt',
       meta: 'key',
     });
+
+    // v2: add memory, money, notifications tables
+    this.version(2).stores({
+      habits: 'id, name, category, isTrashed',
+      tasks: 'id, date, scope, habitId',
+      memoryCards: 'id, category, nextReview, difficulty',
+      transactions: 'id, date, type, category',
+      budgets: 'id, category, month',
+      savingsGoals: 'id, name, deadline',
+      notifications: 'id, type, read, createdAt',
+      syncQueue: '++id, entity, action, entityId, createdAt',
+      meta: 'key',
+    });
   }
 }
 
@@ -43,6 +62,11 @@ export const db = new HabitTrackerDB();
 export async function clearLocalData() {
   await db.habits.clear();
   await db.tasks.clear();
+  await db.memoryCards.clear();
+  await db.transactions.clear();
+  await db.budgets.clear();
+  await db.savingsGoals.clear();
+  await db.notifications.clear();
   await db.syncQueue.clear();
   await db.meta.clear();
 }

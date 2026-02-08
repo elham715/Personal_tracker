@@ -10,8 +10,8 @@ import Register from '@/pages/Register';
 import Dashboard from '@/pages/Dashboard';
 import TaskManager from '@/pages/TaskManager';
 import Habits from '@/pages/Habits';
-import Everyday from '@/pages/Everyday';
-import HabitManager from '@/pages/HabitManager';
+import Memory from '@/pages/Memory';
+import Money from '@/pages/Money';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<any>(undefined);
@@ -41,8 +41,13 @@ const AppLayout: React.FC = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/tasks" element={<TaskManager />} />
           <Route path="/habits" element={<Habits />} />
-          <Route path="/everyday" element={<Everyday />} />
-          <Route path="/habit-manager" element={<HabitManager />} />
+          <Route path="/memory" element={<Memory />} />
+          <Route path="/money" element={<Money />} />
+          {/* Legacy redirects */}
+          <Route path="/habits/calendar" element={<Navigate to="/habits" replace />} />
+          <Route path="/habits/manage" element={<Navigate to="/habits" replace />} />
+          <Route path="/everyday" element={<Navigate to="/habits" replace />} />
+          <Route path="/habit-manager" element={<Navigate to="/habits" replace />} />
         </Routes>
       </main>
     </div>

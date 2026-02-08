@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { auth } from '@/config/firebase';
 import { useApp } from '@/context/AppContext';
-import { Home, CheckSquare, Target, Calendar, Settings, LogOut, Cloud, CloudOff, RefreshCw, AlertCircle } from 'lucide-react';
+import { Home, CheckSquare, Target, Brain, Wallet, LogOut, Cloud, CloudOff, RefreshCw, AlertCircle, Bell } from 'lucide-react';
 
 const SyncBadge: React.FC<{ status: string; pending: number; onSync: () => void }> = ({ status, pending, onSync }) => {
   if (status === 'idle' && pending === 0) return <Cloud size={14} className="text-green-500" />;
@@ -35,10 +35,10 @@ const Sidebar: React.FC = () => {
 
   const tabs = [
     { path: '/', icon: Home, label: 'Home' },
-    { path: '/tasks', icon: CheckSquare, label: 'Tasks' },
     { path: '/habits', icon: Target, label: 'Habits' },
-    { path: '/everyday', icon: Calendar, label: 'Calendar' },
-    { path: '/habit-manager', icon: Settings, label: 'Manage' },
+    { path: '/tasks', icon: CheckSquare, label: 'Tasks' },
+    { path: '/memory', icon: Brain, label: 'Memory' },
+    { path: '/money', icon: Wallet, label: 'Money' },
   ];
 
   return (
@@ -50,8 +50,14 @@ const Sidebar: React.FC = () => {
             <h1 className="text-[15px] font-bold text-gray-900 tracking-tight">Habit Tracker</h1>
             <SyncBadge status={syncStatus} pending={pendingChanges} onSync={forceSync} />
           </div>
-          <div className="relative">
-            <button onClick={() => setShowMobileMenu(!showMobileMenu)}
+          <div className="flex items-center gap-2">
+            {/* Notification Bell */}
+            <Link to="/" className="relative p-1.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors">
+              <Bell size={18} className="text-gray-600" />
+              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
+            </Link>
+            <div className="relative">
+              <button onClick={() => setShowMobileMenu(!showMobileMenu)}
               className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-50 active:bg-indigo-100 transition-colors">
               <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
                 {auth.currentUser?.email?.charAt(0).toUpperCase() || 'U'}
@@ -72,6 +78,7 @@ const Sidebar: React.FC = () => {
                 </div>
               </>
             )}
+            </div>
           </div>
         </div>
       </header>
