@@ -65,7 +65,7 @@ export interface PlayerProfile {
 /* ── Daily Recall Journal ── */
 export interface DailyRecall {
   id: string;              // YYYY-MM-DD (one per day)
-  entries: string[];       // list of things the user recalls
+  content: string;         // free-form journal entry — user writes however they want
   mood: 'great' | 'good' | 'okay' | 'foggy'; // how clear the recall felt
   clarityScore: number;    // 1-10 self-rated
   date: string;            // YYYY-MM-DD

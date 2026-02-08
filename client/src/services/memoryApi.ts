@@ -465,11 +465,11 @@ export const dailyRecallAPI = {
     return recall || null;
   },
 
-  async saveRecall(entries: string[], mood: DailyRecall['mood'], clarityScore: number): Promise<DailyRecall> {
+  async saveRecall(content: string, mood: DailyRecall['mood'], clarityScore: number): Promise<DailyRecall> {
     const today = formatDate();
     const recall: DailyRecall = {
       id: today,
-      entries,
+      content,
       mood,
       clarityScore,
       date: today,

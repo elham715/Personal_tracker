@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Brain, ChevronLeft, ChevronRight, Flame, Zap, Star, TrendingUp, Moon, X, Plus, Check, BookOpen } from 'lucide-react';
+import { Brain, ChevronLeft, ChevronRight, Flame, Zap, Star, TrendingUp, Moon, Check, BookOpen } from 'lucide-react';
 import { GameType, PlayerProfile, DailyRecall } from '@/types';
 import {
   memoryAPI, GAMES, getGameParams, xpProgress, getDailyGames,
@@ -1047,46 +1047,46 @@ const GameExplainer: React.FC<{
    DAILY RECALL VIEW
    ═══════════════════════════════════════════════════════════════════════ */
 const DailyRecallView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [entries, setEntries] = useState<string[]>(['']);
-  const [prompts] = useState(dailyRecallAPI.getDailyPrompts());
+  const [content, setContent] = useState('');
   const [mood, setMood] = useState<DailyRecall['mood'] | null>(null);
   const [clarity, setClarity] = useState(5);
   const [phase, setPhase] = useState<'write' | 'rate' | 'done'>('write');
   const [saving, setSaving] = useState(false);
-  const inputRefs = useRef<(HTMLTextAreaElement | null)[]>([]);
+  const [wordCount, setWordCount] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const addEntry = () => {
-    setEntries(prev => [...prev, '']);
-    setTimeout(() => inputRefs.current[entries.length]?.focus(), 100);
+  useEffect(() => {
+    setWordCount(content.trim() ? content.trim().split(/\s+/).length : 0);
+  }, [content]);
+
+  // Auto-grow textarea
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setContent(e.target.value);
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = Math.max(200, el.scrollHeight) + 'px';
   };
 
-  const updateEntry = (idx: number, val: string) => {
-    setEntries(prev => { const n = [...prev]; n[idx] = val; return n; });
-  };
-
-  const removeEntry = (idx: number) => {
-    if (entries.length <= 1) return;
-    setEntries(prev => prev.filter((_, i) => i !== idx));
-  };
-
-  const filledEntries = entries.filter(e => e.trim().length > 0);
+  const canContinue = content.trim().length >= 10;
 
   const save = async () => {
-    if (!mood || filledEntries.length === 0) return;
+    if (!mood || !canContinue) return;
     setSaving(true);
-    await dailyRecallAPI.saveRecall(filledEntries, mood, clarity);
+    await dailyRecallAPI.saveRecall(content.trim(), mood, clarity);
     setPhase('done');
     setSaving(false);
   };
 
+  const todayStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
   if (phase === 'done') {
     return (
       <div className="page-container max-w-lg mx-auto pb-24 flex flex-col items-center justify-center min-h-[60vh] text-center animate-fade-up">
-        <div className="text-5xl mb-3 animate-pop-in">🧠</div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Recall Saved!</h2>
-        <p className="text-sm text-gray-400 mb-2">You recalled {filledEntries.length} memories from today</p>
-        <p className="text-xs text-violet-600 font-medium mb-6">This practice strengthens hippocampal connections while you sleep 💤</p>
-        <button onClick={onBack} className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl active:scale-95">
+        <div className="text-5xl mb-3 animate-pop-in">📖</div>
+        <h2 className="text-xl font-bold text-gray-900 mb-1">Day Recorded!</h2>
+        <p className="text-sm text-gray-400 mb-1">{wordCount} words captured from today</p>
+        <p className="text-xs text-violet-600 font-medium mb-6">Your memory of today is now preserved. Recalling strengthens your brain while you sleep 💤</p>
+        <button onClick={onBack} className="px-6 py-2.5 bg-violet-600 text-white font-bold rounded-xl active:scale-95 shadow-md shadow-violet-600/30">
           Done
         </button>
       </div>
@@ -1094,41 +1094,52 @@ const DailyRecallView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   }
 
   if (phase === 'rate') {
-    const moods: { val: DailyRecall['mood']; emoji: string; label: string }[] = [
-      { val: 'great', emoji: '🌟', label: 'Crystal clear' },
-      { val: 'good', emoji: '😊', label: 'Pretty good' },
-      { val: 'okay', emoji: '😐', label: 'Okay' },
-      { val: 'foggy', emoji: '🌫️', label: 'Foggy' },
+    const moods: { val: DailyRecall['mood']; emoji: string; label: string; bg: string }[] = [
+      { val: 'great', emoji: '🌟', label: 'Crystal clear', bg: 'bg-amber-50 border-amber-200' },
+      { val: 'good', emoji: '😊', label: 'Pretty good', bg: 'bg-emerald-50 border-emerald-200' },
+      { val: 'okay', emoji: '😐', label: 'Okay', bg: 'bg-blue-50 border-blue-200' },
+      { val: 'foggy', emoji: '🌫️', label: 'Foggy', bg: 'bg-gray-50 border-gray-200' },
     ];
 
     return (
       <div className="page-container max-w-lg mx-auto pb-24">
         <div className="flex items-center gap-3 pt-4 mb-6">
           <button onClick={() => setPhase('write')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
-          <h1 className="text-xl font-bold text-gray-900">Rate Your Recall</h1>
+          <h1 className="text-xl font-bold text-gray-900">How clear is today?</h1>
         </div>
 
-        <p className="text-sm text-gray-500 mb-4">How clear was your memory today?</p>
+        <p className="text-sm text-gray-500 mb-5">How well do you feel you remembered your day?</p>
 
         <div className="grid grid-cols-2 gap-2.5 mb-6">
           {moods.map(m => (
             <button key={m.val} onClick={() => setMood(m.val)}
-              className={`p-4 rounded-2xl text-center transition-all active:scale-95 ${
-                mood === m.val ? 'bg-violet-100 border-2 border-violet-400 shadow-md' : 'bg-white border-2 border-gray-100'
+              className={`p-4 rounded-2xl text-center transition-all active:scale-95 border-2 ${
+                mood === m.val ? 'bg-violet-100 border-violet-400 shadow-md scale-[1.02]' : m.bg
               }`}>
-              <span className="text-2xl">{m.emoji}</span>
+              <span className="text-3xl">{m.emoji}</span>
               <p className={`text-xs font-bold mt-1.5 ${mood === m.val ? 'text-violet-700' : 'text-gray-600'}`}>{m.label}</p>
             </button>
           ))}
         </div>
 
-        <p className="text-sm text-gray-500 mb-2">Clarity score: <span className="font-bold text-violet-600">{clarity}/10</span></p>
-        <input type="range" min={1} max={10} value={clarity} onChange={e => setClarity(Number(e.target.value))}
-          className="w-full h-2 bg-gray-200 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-violet-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md mb-6" />
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-bold text-gray-700">Clarity Score</p>
+            <div className="bg-violet-100 px-3 py-1 rounded-full">
+              <span className="text-sm font-black text-violet-700">{clarity}<span className="text-violet-400 font-medium">/10</span></span>
+            </div>
+          </div>
+          <input type="range" min={1} max={10} value={clarity} onChange={e => setClarity(Number(e.target.value))}
+            className="w-full h-2 bg-gray-200 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:bg-violet-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md" />
+          <div className="flex justify-between mt-1">
+            <span className="text-[9px] text-gray-300">Foggy</span>
+            <span className="text-[9px] text-gray-300">Perfect recall</span>
+          </div>
+        </div>
 
         <button onClick={save} disabled={!mood || saving}
-          className="w-full py-3 bg-violet-600 text-white font-bold rounded-xl active:scale-95 disabled:opacity-40 transition-all shadow-md shadow-violet-600/30">
-          {saving ? 'Saving...' : 'Save Recall'}
+          className="w-full py-3.5 bg-violet-600 text-white font-bold rounded-xl active:scale-95 disabled:opacity-40 transition-all shadow-md shadow-violet-600/30 text-sm">
+          {saving ? 'Saving...' : '✨ Save Today\'s Recall'}
         </button>
       </div>
     );
@@ -1136,61 +1147,63 @@ const DailyRecallView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 
   return (
     <div className="page-container max-w-lg mx-auto pb-24">
-      <div className="flex items-center gap-3 pt-4 mb-4">
+      {/* Header */}
+      <div className="flex items-center gap-3 pt-4 mb-2">
         <button onClick={onBack} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900">Daily Recall</h1>
-          <p className="text-[10px] text-gray-400">Recall everything from today — no peeking!</p>
         </div>
         <Moon size={20} className="text-violet-400" />
       </div>
 
-      {/* Prompt Cards */}
-      <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-2xl p-3.5 mb-5 border border-violet-100">
-        <p className="text-[10px] text-violet-500 font-bold uppercase tracking-wider mb-2">💭 Prompts to help you recall</p>
-        <div className="space-y-1.5">
-          {prompts.map((p, i) => (
-            <p key={i} className="text-xs text-violet-700/70 flex items-start gap-1.5">
-              <span className="text-violet-400 mt-0.5">•</span> {p}
-            </p>
-          ))}
+      {/* Date badge */}
+      <div className="flex items-center gap-2 mb-5">
+        <div className="h-px flex-1 bg-gradient-to-r from-violet-200 to-transparent" />
+        <p className="text-[10px] font-bold text-violet-500 uppercase tracking-widest">{todayStr}</p>
+        <div className="h-px flex-1 bg-gradient-to-l from-violet-200 to-transparent" />
+      </div>
+
+      {/* Gentle nudge */}
+      <div className="bg-gradient-to-br from-violet-50/80 to-indigo-50/80 rounded-2xl p-3.5 mb-5 border border-violet-100/60">
+        <p className="text-xs text-violet-600/80 leading-relaxed">
+          ✍️ Write about your day — what happened, what you did, conversations, feelings, details. 
+          It's your personal diary. Write as little or as much as you want.
+        </p>
+      </div>
+
+      {/* Free-form journal textarea */}
+      <div className="relative mb-4">
+        <textarea
+          ref={textareaRef}
+          value={content}
+          onChange={handleTextChange}
+          placeholder="Today I..."
+          rows={10}
+          className="w-full text-sm text-gray-800 bg-white border border-gray-200 rounded-2xl px-4 py-4 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 resize-none placeholder:text-gray-300 leading-relaxed"
+          style={{ minHeight: '200px' }}
+          autoFocus
+        />
+        {/* Word count badge */}
+        <div className="absolute bottom-3 right-3 flex items-center gap-2">
+          {wordCount > 0 && (
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+              wordCount >= 50 ? 'bg-emerald-100 text-emerald-600' : wordCount >= 20 ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-400'
+            }`}>
+              {wordCount} words
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Memory Entries */}
-      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Your memories</p>
-      <div className="space-y-2 mb-4">
-        {entries.map((entry, idx) => (
-          <div key={idx} className="flex gap-2 animate-fade-up">
-            <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0 mt-2">
-              <span className="text-[10px] font-bold text-violet-600">{idx + 1}</span>
-            </div>
-            <textarea
-              ref={el => { inputRefs.current[idx] = el; }}
-              value={entry}
-              onChange={e => updateEntry(idx, e.target.value)}
-              placeholder="What do you remember?"
-              rows={2}
-              className="flex-1 text-sm text-gray-800 bg-white border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-violet-400 focus:ring-1 focus:ring-violet-400 resize-none placeholder:text-gray-300"
-            />
-            {entries.length > 1 && (
-              <button onClick={() => removeEntry(idx)} className="text-gray-300 hover:text-red-400 mt-2">
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <button onClick={addEntry}
-        className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 font-medium flex items-center justify-center gap-1.5 active:bg-gray-50 mb-6">
-        <Plus size={14} /> Add another memory
+      {/* Continue button */}
+      <button onClick={() => canContinue && setPhase('rate')} disabled={!canContinue}
+        className="w-full py-3.5 bg-violet-600 text-white font-bold rounded-xl active:scale-95 disabled:opacity-40 transition-all shadow-md shadow-violet-600/30 text-sm">
+        Continue →
       </button>
 
-      <button onClick={() => filledEntries.length > 0 && setPhase('rate')} disabled={filledEntries.length === 0}
-        className="w-full py-3 bg-violet-600 text-white font-bold rounded-xl active:scale-95 disabled:opacity-40 transition-all shadow-md shadow-violet-600/30">
-        Continue ({filledEntries.length} {filledEntries.length === 1 ? 'memory' : 'memories'})
-      </button>
+      {!canContinue && content.length > 0 && (
+        <p className="text-center text-[10px] text-gray-300 mt-2">Write a bit more to continue</p>
+      )}
     </div>
   );
 };
@@ -1201,71 +1214,153 @@ const DailyRecallView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
 const RecallHistoryView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [history, setHistory] = useState<DailyRecall[]>([]);
   const [avgClarity, setAvgClarity] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const [h, avg] = await Promise.all([
-        dailyRecallAPI.getRecallHistory(30),
+      const [h, avg, s] = await Promise.all([
+        dailyRecallAPI.getRecallHistory(90),
         dailyRecallAPI.getAvgClarity(),
+        dailyRecallAPI.getRecallStreak(),
       ]);
       setHistory(h);
       setAvgClarity(avg);
+      setStreak(s);
     })();
   }, []);
 
-  const moodEmoji = (m: DailyRecall['mood']) => ({ great: '🌟', good: '😊', okay: '😐', foggy: '🌫️' })[m];
+  const moodMap: Record<DailyRecall['mood'], { emoji: string; label: string; color: string; bg: string }> = {
+    great:  { emoji: '🌟', label: 'Crystal clear', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
+    good:   { emoji: '😊', label: 'Pretty good',   color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200' },
+    okay:   { emoji: '😐', label: 'Okay',           color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
+    foggy:  { emoji: '🌫️', label: 'Foggy',          color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200' },
+  };
+
+  const getRelativeDay = (dateStr: string) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const diff = Math.floor((today.getTime() - d.getTime()) / 86400000);
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    if (diff < 7) return `${diff} days ago`;
+    return null;
+  };
+
+  const getWordCount = (text: string) => text.trim() ? text.trim().split(/\s+/).length : 0;
 
   return (
     <div className="page-container max-w-lg mx-auto pb-24">
+      {/* Header */}
       <div className="flex items-center gap-3 pt-4 mb-5">
         <button onClick={onBack} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
-        <h1 className="text-xl font-bold text-gray-900">Recall Journal</h1>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-gray-900">My Journal</h1>
+          <p className="text-[10px] text-gray-400">Your daily memories, preserved forever</p>
+        </div>
+        <BookOpen size={18} className="text-violet-400" />
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-5">
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-2 mb-5">
         <div className="bg-violet-50 rounded-xl p-3 text-center border border-violet-100">
-          <p className="text-[10px] text-violet-500 font-semibold">Total Entries</p>
-          <p className="text-2xl font-black text-violet-700">{history.length}</p>
+          <p className="text-[10px] text-violet-500 font-semibold">Entries</p>
+          <p className="text-xl font-black text-violet-700">{history.length}</p>
         </div>
-        <div className="bg-violet-50 rounded-xl p-3 text-center border border-violet-100">
-          <p className="text-[10px] text-violet-500 font-semibold">Avg Clarity</p>
-          <p className="text-2xl font-black text-violet-700">{avgClarity}<span className="text-sm text-violet-400">/10</span></p>
+        <div className="bg-indigo-50 rounded-xl p-3 text-center border border-indigo-100">
+          <p className="text-[10px] text-indigo-500 font-semibold">Streak</p>
+          <p className="text-xl font-black text-indigo-700">{streak}<span className="text-xs text-indigo-400">d</span></p>
+        </div>
+        <div className="bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+          <p className="text-[10px] text-amber-500 font-semibold">Avg Clarity</p>
+          <p className="text-xl font-black text-amber-700">{avgClarity}<span className="text-xs text-amber-400">/10</span></p>
         </div>
       </div>
 
       {history.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-3xl mb-2">📝</p>
-          <p className="text-sm text-gray-400">No recall entries yet</p>
-          <p className="text-xs text-gray-300 mt-1">Complete your first Daily Recall tonight!</p>
+        <div className="text-center py-16">
+          <div className="text-5xl mb-3">📖</div>
+          <p className="text-sm font-medium text-gray-500 mb-1">No entries yet</p>
+          <p className="text-xs text-gray-300">Your daily journal cards will appear here<br />once you start recording your days</p>
         </div>
       ) : (
         <div className="space-y-3">
-          {history.map(r => {
-            const dateStr = new Date(r.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+          {history.map((r, idx) => {
+            const d = new Date(r.date + 'T00:00:00');
+            const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+            const dateLabel = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            const relDay = getRelativeDay(r.date);
+            const moodInfo = moodMap[r.mood];
+            const isExpanded = expandedId === r.id;
+            const words = getWordCount(r.content);
+            const isLong = r.content.length > 200;
+            const preview = isLong && !isExpanded ? r.content.slice(0, 200).trim() + '...' : r.content;
+
             return (
-              <div key={r.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-bold text-gray-700">{dateStr}</p>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm">{moodEmoji(r.mood)}</span>
-                    <span className="text-[10px] text-gray-400">{r.clarityScore}/10</span>
+              <div key={r.id}
+                className="animate-fade-up"
+                style={{ animationDelay: `${idx * 40}ms` }}>
+                {/* Timeline connector */}
+                {idx > 0 && (
+                  <div className="flex justify-center -mt-3 mb-0">
+                    <div className="w-px h-3 bg-gradient-to-b from-violet-200 to-transparent" />
                   </div>
-                </div>
-                <div className="space-y-1">
-                  {r.entries.slice(0, 3).map((e, i) => (
-                    <p key={i} className="text-[11px] text-gray-500 flex items-start gap-1.5">
-                      <span className="text-gray-300 mt-0.5">•</span>
-                      <span className="line-clamp-1">{e}</span>
-                    </p>
-                  ))}
-                  {r.entries.length > 3 && (
-                    <p className="text-[10px] text-gray-300">+{r.entries.length - 3} more</p>
-                  )}
+                )}
+
+                <div className={`bg-white rounded-2xl overflow-hidden shadow-sm border transition-all ${
+                  isExpanded ? 'border-violet-200 shadow-md shadow-violet-100/50' : 'border-gray-100'
+                }`}>
+                  {/* Date header strip */}
+                  <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-2.5 flex items-center justify-between">
+                    <div>
+                      <p className="text-white text-xs font-bold">{dayName}</p>
+                      <p className="text-white/50 text-[10px]">{dateLabel}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {relDay && (
+                        <span className="text-[9px] bg-white/15 text-white/70 px-2 py-0.5 rounded-full font-medium">{relDay}</span>
+                      )}
+                      <span className="text-lg">{moodInfo.emoji}</span>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="px-4 py-3.5">
+                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{preview}</p>
+
+                    {isLong && (
+                      <button onClick={() => setExpandedId(isExpanded ? null : r.id)}
+                        className="text-[11px] font-bold text-violet-600 mt-2 flex items-center gap-0.5 active:opacity-70">
+                        {isExpanded ? 'Show less' : 'Read more'}
+                        <ChevronRight size={12} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="px-4 pb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${moodInfo.bg}`}>
+                        {moodInfo.label}
+                      </span>
+                      <span className="text-[10px] text-gray-300 font-medium">{words} words</span>
+                    </div>
+                    <span className="text-[10px] text-gray-300">
+                      clarity {r.clarityScore}/10
+                    </span>
+                  </div>
                 </div>
               </div>
             );
           })}
+
+          {/* End marker */}
+          <div className="text-center py-6">
+            <div className="flex justify-center mb-2">
+              <div className="w-px h-4 bg-gradient-to-b from-violet-200 to-transparent" />
+            </div>
+            <p className="text-[10px] text-gray-300 font-medium">📖 {history.length} days recorded</p>
+          </div>
         </div>
       )}
     </div>
