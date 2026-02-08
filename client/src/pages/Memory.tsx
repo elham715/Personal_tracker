@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Brain, ChevronLeft, ChevronRight, Flame, Zap, Star, TrendingUp, Moon, Check, BookOpen } from 'lucide-react';
+import { Brain, ChevronLeft, ChevronRight, Flame, Zap, Star, TrendingUp, Moon, Check, BookOpen, Pencil, X } from 'lucide-react';
 import { GameType, PlayerProfile, DailyRecall } from '@/types';
 import {
   memoryAPI, GAMES, getGameParams, xpProgress, getDailyGames,
@@ -1216,19 +1216,25 @@ const RecallHistoryView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [avgClarity, setAvgClarity] = useState(0);
   const [streak, setStreak] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editMood, setEditMood] = useState<DailyRecall['mood']>('good');
+  const [editClarity, setEditClarity] = useState(5);
+  const [saving, setSaving] = useState(false);
+  const editRef = useRef<HTMLTextAreaElement | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      const [h, avg, s] = await Promise.all([
-        dailyRecallAPI.getRecallHistory(90),
-        dailyRecallAPI.getAvgClarity(),
-        dailyRecallAPI.getRecallStreak(),
-      ]);
-      setHistory(h);
-      setAvgClarity(avg);
-      setStreak(s);
-    })();
+  const loadHistory = useCallback(async () => {
+    const [h, avg, s] = await Promise.all([
+      dailyRecallAPI.getRecallHistory(90),
+      dailyRecallAPI.getAvgClarity(),
+      dailyRecallAPI.getRecallStreak(),
+    ]);
+    setHistory(h);
+    setAvgClarity(avg);
+    setStreak(s);
   }, []);
+
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
   const moodMap: Record<DailyRecall['mood'], { emoji: string; label: string; color: string; bg: string }> = {
     great:  { emoji: '🌟', label: 'Crystal clear', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' },
@@ -1236,6 +1242,8 @@ const RecallHistoryView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     okay:   { emoji: '😐', label: 'Okay',           color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200' },
     foggy:  { emoji: '🌫️', label: 'Foggy',          color: 'text-gray-500', bg: 'bg-gray-50 border-gray-200' },
   };
+
+  const moodOptions: DailyRecall['mood'][] = ['great', 'good', 'okay', 'foggy'];
 
   const getRelativeDay = (dateStr: string) => {
     const d = new Date(dateStr + 'T00:00:00');
@@ -1248,6 +1256,43 @@ const RecallHistoryView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   };
 
   const getWordCount = (text: string) => text.trim() ? text.trim().split(/\s+/).length : 0;
+
+  const startEdit = (r: DailyRecall) => {
+    setEditingId(r.id);
+    setEditContent(r.content);
+    setEditMood(r.mood);
+    setEditClarity(r.clarityScore);
+    setExpandedId(null);
+    setTimeout(() => {
+      if (editRef.current) {
+        editRef.current.focus();
+        editRef.current.style.height = 'auto';
+        editRef.current.style.height = Math.max(150, editRef.current.scrollHeight) + 'px';
+      }
+    }, 100);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditContent('');
+  };
+
+  const saveEdit = async () => {
+    if (!editingId || editContent.trim().length < 5) return;
+    setSaving(true);
+    await dailyRecallAPI.updateRecall(editingId, editContent.trim(), editMood, editClarity);
+    await loadHistory();
+    setEditingId(null);
+    setEditContent('');
+    setSaving(false);
+  };
+
+  const handleEditTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setEditContent(e.target.value);
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = Math.max(150, el.scrollHeight) + 'px';
+  };
 
   return (
     <div className="page-container max-w-lg mx-auto pb-24">
@@ -1292,9 +1337,10 @@ const RecallHistoryView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             const relDay = getRelativeDay(r.date);
             const moodInfo = moodMap[r.mood];
             const isExpanded = expandedId === r.id;
+            const isEditing = editingId === r.id;
             const words = getWordCount(r.content);
             const isLong = r.content.length > 200;
-            const preview = isLong && !isExpanded ? r.content.slice(0, 200).trim() + '...' : r.content;
+            const preview = isLong && !isExpanded && !isEditing ? r.content.slice(0, 200).trim() + '...' : r.content;
 
             return (
               <div key={r.id}
@@ -1308,47 +1354,111 @@ const RecallHistoryView: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 )}
 
                 <div className={`bg-white rounded-2xl overflow-hidden shadow-sm border transition-all ${
+                  isEditing ? 'border-violet-400 shadow-lg shadow-violet-100/60 ring-1 ring-violet-400/30' :
                   isExpanded ? 'border-violet-200 shadow-md shadow-violet-100/50' : 'border-gray-100'
                 }`}>
                   {/* Date header strip */}
-                  <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-2.5 flex items-center justify-between">
+                  <div className={`px-4 py-2.5 flex items-center justify-between ${
+                    isEditing ? 'bg-gradient-to-r from-violet-700 to-indigo-700' : 'bg-gradient-to-r from-slate-800 to-slate-700'
+                  }`}>
                     <div>
                       <p className="text-white text-xs font-bold">{dayName}</p>
                       <p className="text-white/50 text-[10px]">{dateLabel}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {relDay && (
+                      {relDay && !isEditing && (
                         <span className="text-[9px] bg-white/15 text-white/70 px-2 py-0.5 rounded-full font-medium">{relDay}</span>
                       )}
-                      <span className="text-lg">{moodInfo.emoji}</span>
+                      {isEditing ? (
+                        <span className="text-[9px] bg-white/20 text-white px-2 py-0.5 rounded-full font-bold">Editing</span>
+                      ) : (
+                        <span className="text-lg">{moodInfo.emoji}</span>
+                      )}
                     </div>
                   </div>
 
-                  {/* Content */}
-                  <div className="px-4 py-3.5">
-                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{preview}</p>
+                  {/* Content — reading or editing mode */}
+                  {isEditing ? (
+                    <div className="px-4 py-3.5">
+                      <textarea
+                        ref={editRef}
+                        value={editContent}
+                        onChange={handleEditTextChange}
+                        className="w-full text-sm text-gray-800 bg-violet-50/50 border border-violet-200 rounded-xl px-3.5 py-3 focus:outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 resize-none leading-relaxed"
+                        style={{ minHeight: '150px' }}
+                      />
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-[10px] text-gray-400">{getWordCount(editContent)} words</span>
+                      </div>
 
-                    {isLong && (
-                      <button onClick={() => setExpandedId(isExpanded ? null : r.id)}
-                        className="text-[11px] font-bold text-violet-600 mt-2 flex items-center gap-0.5 active:opacity-70">
-                        {isExpanded ? 'Show less' : 'Read more'}
-                        <ChevronRight size={12} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                      </button>
-                    )}
-                  </div>
+                      {/* Mood & Clarity editors */}
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Mood</p>
+                        <div className="flex gap-1.5 mb-3">
+                          {moodOptions.map(m => (
+                            <button key={m} onClick={() => setEditMood(m)}
+                              className={`flex-1 py-1.5 rounded-lg text-center transition-all active:scale-95 ${
+                                editMood === m ? 'bg-violet-100 border-2 border-violet-400 shadow-sm' : 'bg-gray-50 border-2 border-transparent'
+                              }`}>
+                              <span className="text-sm">{moodMap[m].emoji}</span>
+                              <p className="text-[8px] font-medium text-gray-500 mt-0.5">{moodMap[m].label}</p>
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Clarity</p>
+                          <span className="text-[10px] font-bold text-violet-600">{editClarity}/10</span>
+                        </div>
+                        <input type="range" min={1} max={10} value={editClarity} onChange={e => setEditClarity(Number(e.target.value))}
+                          className="w-full h-1.5 bg-gray-200 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-violet-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-md" />
+                      </div>
+
+                      {/* Save / Cancel */}
+                      <div className="flex gap-2 mt-4">
+                        <button onClick={cancelEdit}
+                          className="flex-1 py-2.5 bg-gray-100 text-gray-600 text-xs font-bold rounded-xl active:scale-95 flex items-center justify-center gap-1">
+                          <X size={12} /> Cancel
+                        </button>
+                        <button onClick={saveEdit} disabled={saving || editContent.trim().length < 5}
+                          className="flex-1 py-2.5 bg-violet-600 text-white text-xs font-bold rounded-xl active:scale-95 disabled:opacity-40 shadow-md shadow-violet-600/20 flex items-center justify-center gap-1">
+                          <Check size={12} /> {saving ? 'Saving...' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-3.5">
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{preview}</p>
+
+                      {isLong && (
+                        <button onClick={() => setExpandedId(isExpanded ? null : r.id)}
+                          className="text-[11px] font-bold text-violet-600 mt-2 flex items-center gap-0.5 active:opacity-70">
+                          {isExpanded ? 'Show less' : 'Read more'}
+                          <ChevronRight size={12} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Footer */}
-                  <div className="px-4 pb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${moodInfo.bg}`}>
-                        {moodInfo.label}
-                      </span>
-                      <span className="text-[10px] text-gray-300 font-medium">{words} words</span>
+                  {!isEditing && (
+                    <div className="px-4 pb-3 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${moodInfo.bg}`}>
+                          {moodInfo.label}
+                        </span>
+                        <span className="text-[10px] text-gray-300 font-medium">{words} words</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-300">clarity {r.clarityScore}/10</span>
+                        <button onClick={() => startEdit(r)}
+                          className="p-1.5 rounded-lg text-gray-300 hover:text-violet-500 hover:bg-violet-50 active:scale-90 transition-all"
+                          title="Edit this entry">
+                          <Pencil size={12} />
+                        </button>
+                      </div>
                     </div>
-                    <span className="text-[10px] text-gray-300">
-                      clarity {r.clarityScore}/10
-                    </span>
-                  </div>
+                  )}
                 </div>
               </div>
             );

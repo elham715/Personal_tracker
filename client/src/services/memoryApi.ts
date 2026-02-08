@@ -480,6 +480,20 @@ export const dailyRecallAPI = {
     return recall;
   },
 
+  async updateRecall(id: string, content: string, mood?: DailyRecall['mood'], clarityScore?: number): Promise<DailyRecall | null> {
+    const existing = await db.dailyRecalls.get(id);
+    if (!existing) return null;
+    const updated: DailyRecall = {
+      ...existing,
+      content,
+      ...(mood !== undefined && { mood }),
+      ...(clarityScore !== undefined && { clarityScore }),
+      completedAt: new Date().toISOString(),
+    };
+    await db.dailyRecalls.put(updated);
+    return updated;
+  },
+
   async getRecallHistory(limit = 30): Promise<DailyRecall[]> {
     return db.dailyRecalls.orderBy('date').reverse().limit(limit).toArray();
   },
