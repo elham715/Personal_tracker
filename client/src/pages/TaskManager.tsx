@@ -107,7 +107,6 @@ const TaskManager: React.FC = () => {
   const today = formatDate();
   const weekKey = getWeekKey();
   const monthKey = getMonthKey();
-
   const toggleExpandWeek = (key: string) => {
     setExpandedPastWeeks(prev => {
       const next = new Set(prev);
