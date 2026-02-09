@@ -472,7 +472,7 @@ const COLOR_HEX: Record<string, string> = {
 
 const Habits: React.FC = () => {
   const { habits, toggleHabitDate, addHabit, deleteHabit, trashedHabits, restoreHabit, permanentlyDeleteHabit } = useApp();
-  const [activeTab, setActiveTab] = useState<'habits' | 'calendar' | 'manage'>('habits');
+  const [activeTab, setActiveTab] = useState<'habits' | 'calendar' | 'manage'>('calendar');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [showManual, setShowManual] = useState(false);
 
