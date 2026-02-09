@@ -138,7 +138,7 @@ const Money: React.FC = () => {
   const xpProg = getMoneyXPProgress(profile.totalXP);
   const pInfo = PERSONALITY_INFO[profile.personality];
   const activeChallenges = profile.activeChallenges.filter(c => !c.completed);
-  const budgetPerDay = transactionAPI.getBudgetPerRemainingDay(Math.max(monthStats.net, 0));
+  const budgetPerDay = transactionAPI.getBudgetPerRemainingDay(Math.max(monthStats.net + monthStats.pendingIncome, 0));
 
   // ── Determine which view to render ──
   const renderContent = () => {
@@ -587,11 +587,11 @@ const Money: React.FC = () => {
         )}
 
         {/* Month Planning Info */}
-        {monthStats.net > 0 && remainingDays > 0 && (
+        {(monthStats.net + monthStats.pendingIncome) > 0 && remainingDays > 0 && (
           <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
             <p className="text-[11px] text-white/50">
               <Calendar size={11} className="inline mr-1 -mt-0.5" />
-              {remainingDays} days left → You can spend <span className="text-white font-semibold">{formatMoney(budgetPerDay)}/day</span>
+              {remainingDays} days left → You can spend <span className="text-white font-semibold">{formatMoney(budgetPerDay)}/day</span>{monthStats.pendingIncome > 0 ? ' (incl. expected)' : ''}
             </p>
           </div>
         )}
