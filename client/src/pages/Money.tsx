@@ -555,32 +555,34 @@ const Money: React.FC = () => {
     <div className="page-container max-w-lg lg:max-w-4xl mx-auto">
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between pt-4 mb-4 animate-fade-up">
+      <div className="flex items-center justify-between pt-4 mb-3 animate-fade-up">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Wallet size={22} className="text-emerald-600" /> Money
           </h1>
-          <p className="text-xs text-gray-400">{todayDate} · {remainingDays} day{remainingDays !== 1 ? 's' : ''} left this month</p>
+          <p className="text-xs text-gray-400">{todayDate} · {remainingDays} day{remainingDays !== 1 ? 's' : ''} left</p>
         </div>
-        <div className="flex items-center gap-1.5">
-          {profile.loggingStreak > 0 && (
-            <span className="text-xs font-semibold text-orange-500 bg-orange-50 px-2.5 py-1 rounded-full">🔥 {profile.loggingStreak}d</span>
-          )}
-          <button onClick={() => { setTxType('income'); setTxCategory('Allowance'); setShowAddTx(true); }}
-            className="flex items-center gap-1 bg-white text-emerald-700 text-xs font-semibold px-3 py-2 rounded-xl active:scale-95 transition-transform border border-emerald-200">
-            <Plus size={14} /> Income
-          </button>
-          <button onClick={() => { setTxType('expense'); setShowAddTx(true); }}
-            className="flex items-center gap-1 bg-emerald-600 text-white text-xs font-semibold px-3 py-2 rounded-xl active:scale-95 transition-transform shadow-sm shadow-emerald-200">
-            <Plus size={14} /> Expense
-          </button>
-        </div>
+        {profile.loggingStreak > 0 && (
+          <span className="text-xs font-semibold text-orange-500 bg-orange-50 px-2.5 py-1 rounded-full">🔥 {profile.loggingStreak}d</span>
+        )}
       </div>
 
-      {/* ══════════ SECTION 1: Current Balance ══════════ */}
+      {/* ══════════ QUICK LOG BAR — always visible, always near thumb ══════════ */}
+      <div className="flex gap-2 mb-3 animate-fade-up" style={{ animationDelay: '20ms' }}>
+        <button onClick={() => { setTxType('expense'); setShowAddTx(true); }}
+          className="flex-1 flex items-center justify-center gap-1.5 bg-red-500 text-white text-sm font-bold py-3 rounded-2xl active:scale-[0.97] transition-transform shadow-sm shadow-red-200">
+          <ArrowDownRight size={16} /> Expense
+        </button>
+        <button onClick={() => { setTxType('income'); setTxCategory('Allowance'); setShowAddTx(true); }}
+          className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 text-white text-sm font-bold py-3 rounded-2xl active:scale-[0.97] transition-transform shadow-sm shadow-emerald-200">
+          <ArrowUpRight size={16} /> Income
+        </button>
+      </div>
+
+      {/* ══════════ BALANCE CARD ══════════ */}
       <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 rounded-2xl p-3.5 lg:p-5 mb-3 shadow-lg shadow-emerald-200/40 animate-fade-up" style={{ animationDelay: '40ms' }}>
         <div className="flex items-center justify-between mb-0.5">
-          <p className="text-[10px] text-white/50 font-bold uppercase tracking-wider">Current Balance</p>
+          <p className="text-[10px] text-white/50 font-bold uppercase tracking-wider">Balance</p>
           {monthStats.pendingIncome > 0 && (
             <p className="text-[10px] text-amber-200/70">
               ⏳ <span className="font-semibold text-amber-200">{formatMoney(monthStats.pendingIncome)}</span> expected
@@ -610,8 +612,6 @@ const Money: React.FC = () => {
             </div>
           </div>
         </div>
-
-        {/* Month Planning Info */}
         {(monthStats.net + monthStats.pendingIncome) > 0 && remainingDays > 0 && (
           <div className="mt-2 pt-2 border-t border-white/10">
             <p className="text-[10px] text-white/50">
@@ -622,81 +622,81 @@ const Money: React.FC = () => {
         )}
       </div>
 
-      {/* ══════════ SECTION 2: Today's Budget ══════════ */}
-      <div className="bg-white rounded-2xl p-4 mb-3 animate-fade-up" style={{ animationDelay: '80ms' }}>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-            <CreditCard size={13} className="text-gray-400" /> Today's Budget
-          </h3>
-          <button onClick={() => { setShowSetBudgetLimit(true); setDailyBudgetInput(String(profile.dailyBudget)); }}
-            className="text-[10px] text-emerald-600 font-semibold">Change →</button>
-        </div>
-        <div className="flex items-end justify-between mb-2">
-          <div>
-            <p className={`text-2xl font-bold ${dailyBudget.remaining >= 0 ? 'text-gray-900' : 'text-red-500'}`}>
-              {dailyBudget.remaining >= 0 ? formatMoney(dailyBudget.remaining) : `-${formatMoney(Math.abs(dailyBudget.remaining))}`}
-            </p>
-            <p className="text-[10px] text-gray-400">remaining of {formatMoney(dailyBudget.budget)}</p>
+      {/* ══════════ TODAY CARD — Budget + Expenses ══════════ */}
+      <div className="bg-white rounded-2xl mb-3 overflow-hidden animate-fade-up" style={{ animationDelay: '80ms' }}>
+        <div className="p-4 pb-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+              <CreditCard size={13} className="text-gray-400" /> Today
+            </h3>
+            <button onClick={() => { setShowSetBudgetLimit(true); setDailyBudgetInput(String(profile.dailyBudget)); }}
+              className="text-[10px] text-emerald-600 font-semibold">Budget →</button>
           </div>
-          <p className="text-sm font-semibold text-gray-400">{formatMoney(dailyBudget.spent)} spent</p>
+          <div className="flex items-end justify-between mb-2">
+            <div>
+              <p className={`text-2xl font-bold ${dailyBudget.remaining >= 0 ? 'text-gray-900' : 'text-red-500'}`}>
+                {dailyBudget.remaining >= 0 ? formatMoney(dailyBudget.remaining) : `-${formatMoney(Math.abs(dailyBudget.remaining))}`}
+              </p>
+              <p className="text-[10px] text-gray-400">remaining of {formatMoney(dailyBudget.budget)}</p>
+            </div>
+            <p className="text-sm font-semibold text-gray-400">{formatMoney(dailyBudget.spent)} spent</p>
+          </div>
+          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all duration-500 ${
+              dailyBudget.pct > 90 ? 'bg-red-500' : dailyBudget.pct > 70 ? 'bg-amber-400' : 'bg-emerald-500'
+            }`} style={{ width: `${Math.min(dailyBudget.pct, 100)}%` }} />
+          </div>
+          {dailyBudget.remaining < 0 && (
+            <p className="text-[10px] text-red-500 font-medium mt-1.5">⚠️ Over budget</p>
+          )}
         </div>
-        <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-          <div className={`h-full rounded-full transition-all duration-500 ${
-            dailyBudget.pct > 90 ? 'bg-red-500' : dailyBudget.pct > 70 ? 'bg-amber-400' : 'bg-emerald-500'
-          }`} style={{ width: `${Math.min(dailyBudget.pct, 100)}%` }} />
+        <div onClick={() => navigateTo('today')}
+          className="border-t border-gray-100 px-4 py-3 cursor-pointer active:bg-gray-50 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Spent on</p>
+            <span className="text-[10px] text-emerald-600 font-semibold">Details →</span>
+          </div>
+          {todayByCategory.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {todayByCategory.map(item => {
+                const catInfo = EXPENSE_CATEGORIES.find(c => c.name === item.category);
+                return (
+                  <div key={item.category} className="flex items-center gap-1 bg-gray-50 rounded-lg px-2 py-1">
+                    <span className="text-xs">{catInfo?.icon || '📦'}</span>
+                    <span className="text-[11px] font-semibold text-gray-700">{formatMoney(item.total)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">Nothing spent yet 🎉</p>
+          )}
         </div>
-        {dailyBudget.remaining < 0 && (
-          <p className="text-[10px] text-red-500 font-medium mt-1.5">⚠️ You've gone over today's budget</p>
-        )}
       </div>
 
-      {/* ══════════ SECTION 3: Today's Expenses Preview ══════════ */}
-      <button onClick={() => navigateTo('today')}
-        className="w-full bg-white rounded-2xl p-4 mb-3 text-left active:bg-gray-50 transition-colors animate-fade-up" style={{ animationDelay: '120ms' }}>
-        <div className="flex items-center justify-between mb-2.5">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Today's Expenses</h3>
-          <span className="text-[10px] text-emerald-600 font-semibold">See all →</span>
-        </div>
-        {todayByCategory.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {todayByCategory.map(item => {
-              const catInfo = EXPENSE_CATEGORIES.find(c => c.name === item.category);
-              return (
-                <div key={item.category} className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2.5 py-1.5">
-                  <span className="text-sm">{catInfo?.icon || '📦'}</span>
-                  <span className="text-xs font-semibold text-gray-700">{formatMoney(item.total)}</span>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-xs text-gray-400">No expenses yet today — tap to add</p>
-        )}
-      </button>
-
-      {/* ══════════ SECTION 4: Quick Actions ══════════ */}
-      <div className="grid grid-cols-2 gap-2 mb-3 animate-fade-up" style={{ animationDelay: '160ms' }}>
-        <button onClick={() => navigateTo('savings')}
-          className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-3.5 text-left active:scale-[0.98] transition-transform border border-purple-100">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xl">🐷</span>
-            <p className="text-sm font-bold text-purple-800">Savings</p>
-          </div>
-          <p className="text-[10px] text-purple-500">{savings.length > 0 ? `${savings.length} goal${savings.length > 1 ? 's' : ''} active` : 'Start saving today →'}</p>
+      {/* ══════════ QUICK NAV — 4 destinations in a grid ══════════ */}
+      <div className="grid grid-cols-4 gap-2 mb-3 animate-fade-up" style={{ animationDelay: '120ms' }}>
+        <button onClick={() => navigateTo('transactions')} className="bg-white rounded-xl py-2.5 text-center active:bg-gray-50 transition-colors">
+          <p className="text-base mb-0.5">📝</p>
+          <p className="text-[10px] text-gray-500 font-medium">History</p>
         </button>
-        <button onClick={() => navigateTo('insights')}
-          className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-3.5 text-left active:scale-[0.98] transition-transform border border-amber-100">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xl">📊</span>
-            <p className="text-sm font-bold text-amber-800">Insights</p>
-          </div>
-          <p className="text-[10px] text-amber-500">See spending patterns →</p>
+        <button onClick={() => navigateTo('budgets')} className="bg-white rounded-xl py-2.5 text-center active:bg-gray-50 transition-colors">
+          <p className="text-base mb-0.5">📊</p>
+          <p className="text-[10px] text-gray-500 font-medium">Budgets</p>
+        </button>
+        <button onClick={() => navigateTo('savings')} className="bg-white rounded-xl py-2.5 text-center active:bg-gray-50 transition-colors">
+          <p className="text-base mb-0.5">🐷</p>
+          <p className="text-[10px] text-gray-500 font-medium">Savings</p>
+        </button>
+        <button onClick={() => navigateTo('insights')} className="bg-white rounded-xl py-2.5 text-center active:bg-gray-50 transition-colors">
+          <p className="text-base mb-0.5">💡</p>
+          <p className="text-[10px] text-gray-500 font-medium">Insights</p>
         </button>
       </div>
 
-      {/* ══════════ SECTION 5: Category Budgets (if set) ══════════ */}
+      {/* ══════════ CATEGORY BUDGETS (if set) ══════════ */}
       {budgets.length > 0 && (
-        <div className="bg-white rounded-2xl p-4 mb-3 animate-fade-up" style={{ animationDelay: '200ms' }}>
+        <div className="bg-white rounded-2xl p-4 mb-3 animate-fade-up" style={{ animationDelay: '160ms' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
               <BarChart3 size={13} className="text-gray-400" /> Monthly Budgets
@@ -704,7 +704,7 @@ const Money: React.FC = () => {
             <button onClick={() => navigateTo('budgets')} className="text-[10px] text-emerald-600 font-semibold">Manage →</button>
           </div>
           <div className="space-y-2.5">
-            {budgets.slice(0, 4).map((b: any) => {
+            {budgets.slice(0, 3).map((b: any) => {
               const catInfo = EXPENSE_CATEGORIES.find(c => c.name === b.category);
               return (
                 <div key={b.id} className="flex items-center gap-2.5">
@@ -725,75 +725,46 @@ const Money: React.FC = () => {
               );
             })}
           </div>
-          {budgets.length > 4 && (
-            <button onClick={() => navigateTo('budgets')} className="text-[10px] text-gray-400 mt-2">+{budgets.length - 4} more</button>
+          {budgets.length > 3 && (
+            <button onClick={() => navigateTo('budgets')} className="text-[10px] text-gray-400 mt-2">+{budgets.length - 3} more</button>
           )}
         </div>
       )}
 
-      {/* ══════════ SECTION 6: Challenges ══════════ */}
-      <div className="bg-white rounded-2xl p-4 mb-3 animate-fade-up" style={{ animationDelay: '240ms' }}>
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-            <Award size={13} className="text-amber-500" /> Money Challenges
+      {/* ══════════ CHALLENGES ══════════ */}
+      {activeChallenges.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 mb-3 animate-fade-up" style={{ animationDelay: '200ms' }}>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5 mb-2.5">
+            <Award size={13} className="text-amber-500" /> Challenges
+            {activeChallenges.length < 2 && (
+              <button onClick={handleStartChallenge} className="ml-auto text-[10px] text-emerald-600 font-semibold">+ New</button>
+            )}
           </h3>
-          {activeChallenges.length < 2 && (
-            <button onClick={handleStartChallenge} className="text-[10px] text-emerald-600 font-semibold">+ Start</button>
-          )}
-        </div>
-        <p className="text-[10px] text-gray-400 mb-3">Complete challenges to earn XP and build better money habits</p>
-
-        {activeChallenges.length === 0 ? (
-          <button onClick={handleStartChallenge}
-            className="w-full py-3 text-center border border-dashed border-gray-200 rounded-xl active:bg-gray-50 transition-colors">
-            <p className="text-sm font-semibold text-gray-600">🎯 Start Your First Challenge</p>
-            <p className="text-[10px] text-gray-400 mt-0.5">E.g. "Log expenses for 7 days" — earn 50 XP</p>
-          </button>
-        ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {activeChallenges.map(ch => {
               const pct = ch.target > 0 ? Math.round((Math.min(ch.progress, ch.target) / ch.target) * 100) : 0;
               return (
                 <div key={ch.id} className="bg-gray-50 rounded-xl p-3">
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <span className="text-lg">{ch.icon}</span>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-base">{ch.icon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800">{ch.title}</p>
-                      <p className="text-[10px] text-gray-400">{ch.description} · <span className="text-amber-600 font-semibold">+{ch.xpReward} XP reward</span></p>
+                      <p className="text-[10px] text-gray-400">{ch.progress}/{ch.target} · <span className="text-amber-600 font-semibold">+{ch.xpReward} XP</span></p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                      <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-[10px] text-gray-500 font-semibold">{ch.progress}/{ch.target}</span>
+                  <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* ══════════ SECTION 7: Navigation Row ══════════ */}
-      <div className="grid grid-cols-3 gap-2 mb-3 animate-fade-up" style={{ animationDelay: '280ms' }}>
-        <button onClick={() => navigateTo('transactions')} className="bg-white rounded-xl py-3 text-center active:bg-gray-50 transition-colors">
-          <p className="text-sm font-semibold text-gray-700">📝</p>
-          <p className="text-[10px] text-gray-400">{monthStats.transactionCount} transactions</p>
-        </button>
-        <button onClick={() => navigateTo('budgets')} className="bg-white rounded-xl py-3 text-center active:bg-gray-50 transition-colors">
-          <p className="text-sm font-semibold text-gray-700">📊</p>
-          <p className="text-[10px] text-gray-400">{budgets.length} budget{budgets.length !== 1 ? 's' : ''}</p>
-        </button>
-        <button onClick={() => setShowAddBudget(true)} className="bg-white rounded-xl py-3 text-center active:bg-gray-50 transition-colors">
-          <p className="text-sm font-semibold text-gray-700">➕</p>
-          <p className="text-[10px] text-gray-400">Set Budget</p>
-        </button>
-      </div>
-
-      {/* ══════════ SECTION 8: Recent Transactions ══════════ */}
+      {/* ══════════ RECENT TRANSACTIONS ══════════ */}
       {transactions.length > 0 && (
-        <div className="animate-fade-up" style={{ animationDelay: '320ms' }}>
+        <div className="animate-fade-up" style={{ animationDelay: '240ms' }}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent</h3>
             <button onClick={() => navigateTo('transactions')} className="text-[10px] text-emerald-600 font-semibold">All →</button>
@@ -840,27 +811,13 @@ const Money: React.FC = () => {
         </div>
       )}
 
-      {/* ══════════ EMPTY STATE ══════════ */}
-      {monthStats.transactionCount === 0 && budgets.length === 0 && savings.length === 0 && (
-        <div className="text-center py-10 animate-fade-up">
-          <div className="w-16 h-16 rounded-full bg-emerald-50 mx-auto flex items-center justify-center mb-4">
-            <Wallet size={28} className="text-emerald-400" />
-          </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-1">Start Tracking Money</h3>
-          <p className="text-sm text-gray-400 mb-5 max-w-xs mx-auto">
-            Log what you spend and earn. See where your money goes.
-          </p>
-          <div className="flex gap-2 justify-center">
-            <button onClick={() => { setTxType('expense'); setShowAddTx(true); }}
-              className="inline-flex items-center gap-1.5 bg-emerald-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl active:scale-95 transition-transform">
-              <Plus size={16} /> Log Expense
-            </button>
-            <button onClick={() => { setTxType('income'); setTxCategory('Allowance'); setShowAddTx(true); }}
-              className="inline-flex items-center gap-1.5 bg-white text-gray-700 text-sm font-semibold px-5 py-2.5 rounded-xl active:scale-95 transition-transform border border-gray-200">
-              <Plus size={16} /> Add Income
-            </button>
-          </div>
-        </div>
+      {/* ═══ START CHALLENGE (if none active) ═══ */}
+      {activeChallenges.length === 0 && monthStats.transactionCount > 0 && (
+        <button onClick={handleStartChallenge}
+          className="w-full bg-white rounded-2xl p-4 mb-3 text-center border border-dashed border-gray-200 active:bg-gray-50 transition-colors animate-fade-up" style={{ animationDelay: '280ms' }}>
+          <p className="text-sm font-semibold text-gray-600">🎯 Start a Money Challenge</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">Build better habits & earn XP</p>
+        </button>
       )}
 
     </div>
