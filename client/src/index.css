@@ -8,7 +8,6 @@
   body {
     @apply bg-[#f8f8fa] text-gray-900 antialiased;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-    padding-top: env(safe-area-inset-top, 0px);
   }
 }
 
@@ -22,6 +21,11 @@
     @apply px-5 pt-2 pb-28 lg:px-10 lg:pt-6 lg:pb-10;
   }
 }
+
+/* Safe area utilities for mobile status bar / notch */
+.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.mt-safe { margin-top: env(safe-area-inset-top, 0px); }
 
 /* Animations */
 @keyframes fade-up {
@@ -71,9 +75,6 @@
 ::-webkit-scrollbar { width: 0px; height: 0px; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* Safe area */
-.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 /* SVG Progress Ring */
 .progress-ring-circle {

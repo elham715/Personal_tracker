@@ -36,7 +36,10 @@ const AppLayout: React.FC = () => (
   <AppProvider>
     <div className="min-h-screen">
       <Sidebar />
-      <main className="pt-11 lg:pt-0 lg:ml-[220px] min-h-screen">
+      <main className="min-h-screen lg:ml-[220px] lg:pt-0" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 48px)' }}>
+        {/* On desktop (lg+), no top padding. On mobile, safe-area + 48px header */}
+        <div className="lg:hidden" />
+        <style>{`@media (min-width: 1024px) { main { padding-top: 0 !important; } }`}</style>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/tasks" element={<TaskManager />} />

@@ -45,7 +45,7 @@ const Sidebar: React.FC = () => {
     <>
       {/* ── MOBILE: Top Header Bar with user/logout ── */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-200/60 pt-safe">
-        <div className="flex items-center justify-between h-11 px-4">
+        <div className="flex items-center justify-between h-12 px-4">
           <div className="flex items-center gap-1.5">
             <h1 className="text-[15px] font-bold text-gray-900 tracking-tight">Habit Tracker</h1>
             <SyncBadge status={syncStatus} pending={pendingChanges} onSync={forceSync} />
