@@ -7,7 +7,7 @@
  * Writes go here immediately, then get synced to the server.
  */
 import Dexie, { type Table } from 'dexie';
-import { Habit, Task, GameResult, PlayerProfile, DailyRecall, Transaction, Budget, SavingsGoal, AppNotification } from '@/types';
+import { Habit, Task, GameResult, PlayerProfile, DailyRecall, Transaction, Budget, SavingsGoal, MoneyProfile, AppNotification } from '@/types';
 
 // ── Sync queue entry ──
 export interface SyncQueueItem {
@@ -28,6 +28,7 @@ class HabitTrackerDB extends Dexie {
   transactions!: Table<Transaction, string>;
   budgets!: Table<Budget, string>;
   savingsGoals!: Table<SavingsGoal, string>;
+  moneyProfile!: Table<MoneyProfile, string>;
   notifications!: Table<AppNotification, string>;
   dailyRecalls!: Table<DailyRecall, string>;
   syncQueue!: Table<SyncQueueItem, number>;
@@ -86,6 +87,22 @@ class HabitTrackerDB extends Dexie {
       syncQueue: '++id, entity, action, entityId, createdAt',
       meta: 'key',
     });
+
+    // v5: add money profile + isNeed field on transactions
+    this.version(5).stores({
+      habits: 'id, name, category, isTrashed',
+      tasks: 'id, date, scope, habitId',
+      gameResults: 'id, game, date, createdAt',
+      playerProfile: 'id',
+      dailyRecalls: 'id, date',
+      transactions: 'id, date, type, category',
+      budgets: 'id, category, month',
+      savingsGoals: 'id, name, deadline',
+      moneyProfile: 'id',
+      notifications: 'id, type, read, createdAt',
+      syncQueue: '++id, entity, action, entityId, createdAt',
+      meta: 'key',
+    });
   }
 }
 
@@ -101,6 +118,7 @@ export async function clearLocalData() {
   await db.transactions.clear();
   await db.budgets.clear();
   await db.savingsGoals.clear();
+  await db.moneyProfile.clear();
   await db.notifications.clear();
   await db.syncQueue.clear();
   await db.meta.clear();

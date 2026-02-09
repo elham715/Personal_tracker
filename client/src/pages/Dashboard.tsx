@@ -4,7 +4,7 @@ import { formatDate } from '@/utils/helpers';
 import { Target, CheckSquare, Brain, Wallet, ArrowRight, Sparkles, Zap, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { memoryAPI } from '@/services/memoryApi';
-import { transactionAPI, budgetAPI, savingsAPI } from '@/services/moneyApi';
+import { transactionAPI, budgetAPI, savingsAPI, formatMoney } from '@/services/moneyApi';
 import { generateNotifications } from '@/services/notificationEngine';
 import { AppNotification } from '@/types';
 
@@ -166,14 +166,14 @@ const Dashboard: React.FC = () => {
           <p className="text-[9px] text-white/50 font-bold uppercase tracking-wider">Money</p>
           {moneyStats.transactionCount > 0 ? (
             <p className="text-white text-base font-bold leading-tight truncate">
-              {moneyStats.net >= 0 ? '+' : ''}{moneyStats.net.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              {moneyStats.net >= 0 ? '+' : '-'}{formatMoney(moneyStats.net)}
             </p>
           ) : (
             <p className="text-white/60 text-xs font-medium mt-0.5">Track →</p>
           )}
           {moneyStats.transactionCount > 0 && (
             <div className="text-[9px] text-white/40 mt-1 truncate">
-              ↑{moneyStats.income.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              ↑{formatMoney(moneyStats.income)}
             </div>
           )}
           {budgetAlerts > 0 && (

@@ -80,6 +80,7 @@ export interface Transaction {
   type: 'income' | 'expense';
   category: string;       // e.g. 'Food', 'Transport', 'Entertainment'
   note: string;
+  isNeed: boolean;        // true = "needed", false = "wanted" (for awareness)
   date: string;           // YYYY-MM-DD
   createdAt: string;
 }
@@ -101,6 +102,37 @@ export interface SavingsGoal {
   deadline: string;       // YYYY-MM-DD
   color: string;
   createdAt: string;
+}
+
+export type MoneyPersonality = 'saver' | 'balanced' | 'spender' | 'new';
+
+export interface MoneyProfile {
+  id: string;             // always 'money-profile'
+  moneyLevel: number;     // 1-50, gamified level
+  totalXP: number;
+  personality: MoneyPersonality;
+  dailyBudget: number;    // user-set daily spending limit (৳)
+  currency: string;       // '৳' for BDT
+  noSpendDays: string[];  // YYYY-MM-DD dates of no-spend days
+  loggingStreak: number;
+  bestLoggingStreak: number;
+  activeChallenges: MoneyChallenge[];
+  completedChallenges: string[]; // challenge IDs
+  createdAt: string;
+}
+
+export interface MoneyChallenge {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  type: 'no-spend' | 'save' | 'log' | 'budget';
+  target: number;         // e.g. 7 no-spend days, log for 14 days
+  progress: number;
+  xpReward: number;
+  startDate: string;
+  endDate: string;
+  completed: boolean;
 }
 
 /* ── Notification System ── */

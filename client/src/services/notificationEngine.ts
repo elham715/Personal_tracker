@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db } from './offlineDb';
 import { AppNotification, Habit, Task } from '@/types';
 import { formatDate } from '@/utils/helpers';
+import { transactionAPI, moneyProfileAPI, formatMoney } from './moneyApi';
 
 // ── Generate smart notifications based on current state ──
 export async function generateNotifications(
@@ -89,13 +90,56 @@ export async function generateNotifications(
     }
   } catch {}
 
-  // 5. Money logging
+  // 5. Money system — comprehensive alerts
   try {
     const todayTxCount = await db.transactions.filter(t => t.date === today).count();
+
+    // 5a. No expenses logged nudge
     if (todayTxCount === 0 && hour >= 12) {
       notifs.push(makeNotif('money', '💰 Log Your Spending',
-        'No expenses logged today — keep your streak going!',
+        'No expenses logged today — keep your logging streak going!',
         '💰', 'text-emerald-600', '/money'));
+    }
+
+    // 5b. Spending velocity warning
+    const vel = await transactionAPI.getSpendingVelocity(3);
+    if (vel.trend === 'fast' && vel.total > 0) {
+      notifs.push(makeNotif('money', '⚡ Spending Fast!',
+        `${formatMoney(vel.total)} in ${vel.days} days (${formatMoney(vel.avg)}/day avg). Slow down!`,
+        '⚡', 'text-red-600', '/money'));
+    }
+
+    // 5c. Daily budget exceeded warning
+    const daily = await transactionAPI.getDailyRemaining();
+    if (daily.remaining < 0) {
+      notifs.push(makeNotif('money', '🚫 Over Daily Budget!',
+        `Spent ${formatMoney(daily.spent)} of ${formatMoney(daily.budget)} today. Pause non-essentials!`,
+        '🚫', 'text-red-600', '/money'));
+    } else if (daily.pct >= 80 && daily.pct < 100 && todayTxCount > 0) {
+      notifs.push(makeNotif('money', '⚠️ Budget Almost Gone',
+        `Only ${formatMoney(daily.remaining)} left today. Be mindful!`,
+        '⚠️', 'text-amber-600', '/money'));
+    }
+
+    // 5d. No-spend day celebration
+    const todayExpenses = await db.transactions.filter(t => t.date === today && t.type === 'expense').count();
+    if (todayExpenses === 0 && hour >= 20) {
+      notifs.push(makeNotif('milestone', '🛡️ No-Spend Day!',
+        'Zero expenses today — amazing discipline! +15 XP',
+        '🛡️', 'text-emerald-600', '/money'));
+    }
+
+    // 5e. Challenge progress
+    const profile = await moneyProfileAPI.get();
+    const activeChallenges = profile.activeChallenges.filter((c: any) => !c.completed);
+    for (const ch of activeChallenges) {
+      const pct = ch.target > 0 ? Math.round((ch.progress / ch.target) * 100) : 0;
+      if (pct >= 75 && pct < 100) {
+        notifs.push(makeNotif('money', `🏆 Almost There!`,
+          `"${ch.title}" — ${ch.progress}/${ch.target} (${pct}%). Keep pushing!`,
+          '🏆', 'text-amber-600', '/money'));
+        break;
+      }
     }
   } catch {}
 
