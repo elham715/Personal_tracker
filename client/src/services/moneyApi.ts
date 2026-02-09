@@ -538,3 +538,60 @@ export const PERSONALITY_INFO = {
     bg: 'from-orange-500 to-red-500',
   },
 };
+
+// ── Demo Data Seeder ──
+export async function seedDemoTransactions(): Promise<number> {
+  // Only seed if there are < 5 transactions total (avoid duplicates)
+  const existing = await db.transactions.count();
+  if (existing > 10) return 0;
+
+  const now = new Date();
+  const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  const demoTxs: Omit<Transaction, 'id' | 'createdAt'>[] = [
+    // ── Two months ago ──
+    { amount: 15000, type: 'income', category: 'Allowance', note: 'Monthly pocket money', isNeed: true, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 1)) },
+    { amount: 350, type: 'expense', category: 'Food', note: 'Biryani with friends', isNeed: false, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 2)) },
+    { amount: 120, type: 'expense', category: 'Transport', note: 'Bus to campus', isNeed: true, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 2)) },
+    { amount: 500, type: 'expense', category: 'Education', note: 'Notebook & pens', isNeed: true, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 5)) },
+    { amount: 80, type: 'expense', category: 'Coffee & Snacks', note: 'Cha and singara', isNeed: false, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 5)) },
+    { amount: 2000, type: 'income', category: 'Tutoring', note: 'Tuition for Rahim', isNeed: true, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 8)) },
+    { amount: 1200, type: 'expense', category: 'Shopping', note: 'New t-shirt', isNeed: false, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 10)) },
+    { amount: 200, type: 'expense', category: 'Bills & Recharge', note: 'Mobile recharge', isNeed: true, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 12)) },
+    { amount: 450, type: 'expense', category: 'Entertainment', note: 'Movie ticket', isNeed: false, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 15)) },
+    { amount: 300, type: 'expense', category: 'Food', note: 'Lunch at canteen', isNeed: true, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 18)) },
+    { amount: 150, type: 'expense', category: 'Ride', note: 'CNG to market', isNeed: true, date: fmt(new Date(twoMonthsAgo.getFullYear(), twoMonthsAgo.getMonth(), 20)) },
+
+    // ── Previous month ──
+    { amount: 15000, type: 'income', category: 'Allowance', note: 'Monthly pocket money', isNeed: true, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 1)) },
+    { amount: 3000, type: 'income', category: 'Freelance', note: 'Logo design project', isNeed: true, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 3)) },
+    { amount: 280, type: 'expense', category: 'Food', note: 'Kacchi with bhai', isNeed: false, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 3)) },
+    { amount: 60, type: 'expense', category: 'Coffee & Snacks', note: 'Fuchka!', isNeed: false, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 4)) },
+    { amount: 250, type: 'expense', category: 'Transport', note: 'Pathao ride', isNeed: true, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 6)) },
+    { amount: 1500, type: 'expense', category: 'Shopping', note: 'Phone case & earbuds', isNeed: false, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 8)) },
+    { amount: 500, type: 'income', category: 'Gift', note: 'Birthday money from mama', isNeed: true, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 10)) },
+    { amount: 350, type: 'expense', category: 'Health', note: 'Pharmacy visit', isNeed: true, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 12)) },
+    { amount: 200, type: 'expense', category: 'Bills & Recharge', note: 'GP recharge 200', isNeed: true, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 14)) },
+    { amount: 180, type: 'expense', category: 'Food', note: 'Fried rice takeaway', isNeed: true, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 16)) },
+    { amount: 400, type: 'expense', category: 'Gift', note: 'Gift for friend birthday', isNeed: false, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 18)) },
+    { amount: 100, type: 'expense', category: 'Coffee & Snacks', note: 'Coffee & biscuits', isNeed: false, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 22)) },
+    { amount: 2000, type: 'income', category: 'Tutoring', note: 'Tuition batch 2', isNeed: true, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 25)) },
+    { amount: 600, type: 'expense', category: 'Entertainment', note: 'Spotify + games', isNeed: false, date: fmt(new Date(prevMonth.getFullYear(), prevMonth.getMonth(), 27)) },
+  ];
+
+  let count = 0;
+  for (const data of demoTxs) {
+    const tx: Transaction = {
+      ...data,
+      id: uuidv4(),
+      createdAt: new Date().toISOString(),
+    };
+    await db.transactions.put(tx);
+    count++;
+  }
+  return count;
+}

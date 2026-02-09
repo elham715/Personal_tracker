@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Wallet, Plus, X, ArrowUpRight, ArrowDownRight, Trash2, ChevronLeft,
+  Wallet, Plus, X, ArrowUpRight, ArrowDownRight, Trash2, ChevronLeft, ChevronDown,
   Award, Calendar, CreditCard, BarChart3,
 } from 'lucide-react';
 import { Transaction, SavingsGoal, MoneyProfile } from '@/types';
 import {
   transactionAPI, budgetAPI, savingsAPI, moneyProfileAPI,
   EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCY, formatMoney,
-  getMoneyRank, getMoneyXPProgress, PERSONALITY_INFO,
+  getMoneyRank, getMoneyXPProgress, PERSONALITY_INFO, seedDemoTransactions,
 } from '@/services/moneyApi';
 import { formatDate } from '@/utils/helpers';
 
@@ -39,7 +39,6 @@ const Money: React.FC = () => {
     return () => window.removeEventListener('popstate', onPopState);
   }, [view]);
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<any[]>([]);
   const [savings, setSavings] = useState<SavingsGoal[]>([]);
   const [profile, setProfile] = useState<MoneyProfile | null>(null);
@@ -47,6 +46,8 @@ const Money: React.FC = () => {
   const [dailyBudget, setDailyBudget] = useState({ spent: 0, remaining: 0, budget: 500, pct: 0 });
   const [todayByCategory, setTodayByCategory] = useState<{ category: string; total: number; count: number }[]>([]);
   const [todayTxs, setTodayTxs] = useState<Transaction[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
 
   // Modals
   const [showAddTx, setShowAddTx] = useState(false);
@@ -78,8 +79,7 @@ const Money: React.FC = () => {
   const todayDate = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
   const refresh = useCallback(async () => {
-    const [txs, stats, budgetAlerts, goals, prof, daily, todayCats, todayList] = await Promise.all([
-      transactionAPI.getByMonth(currentMonth),
+    const [stats, budgetAlerts, goals, prof, daily, todayCats, todayList] = await Promise.all([
       transactionAPI.getMonthStats(),
       budgetAPI.getAlerts(),
       savingsAPI.getAll(),
@@ -88,7 +88,6 @@ const Money: React.FC = () => {
       transactionAPI.getTodayByCategory(),
       transactionAPI.getTodayTransactions(),
     ]);
-    setTransactions(txs.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)));
     setMonthStats(stats);
     setBudgets(budgetAlerts);
     setSavings(goals);
@@ -96,6 +95,10 @@ const Money: React.FC = () => {
     setDailyBudget(daily);
     setTodayByCategory(todayCats);
     setTodayTxs(todayList);
+
+    const allTxs = await transactionAPI.getAll();
+    setAllTransactions(allTxs);
+    if (!expandedMonth) setExpandedMonth(currentMonth);
 
     await moneyProfileAPI.updateChallenges();
     setProfile(await moneyProfileAPI.get());
@@ -267,83 +270,175 @@ const Money: React.FC = () => {
   );
 
   // ═══════════════════════════════════════════════════════════════
-  //  ALL TRANSACTIONS VIEW
+  //  ALL TRANSACTIONS VIEW — grouped by Month → Day accordion
   // ═══════════════════════════════════════════════════════════════
-  if (view === 'transactions') return (
-    <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
-      <div className="flex items-center gap-3 pt-4 mb-4">
-        <button onClick={() => window.history.back()} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
-        <h1 className="text-xl font-bold text-gray-900 flex-1">All Transactions</h1>
-        <button onClick={() => setShowAddTx(true)}
-          className="flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-semibold px-3 py-2 rounded-xl active:scale-95 transition-transform">
-          <Plus size={14} /> Log
-        </button>
-      </div>
+  if (view === 'transactions') {
+    // Group all transactions by month, then by day
+    const monthGroups: Record<string, Transaction[]> = {};
+    allTransactions.forEach(tx => {
+      const m = tx.date.slice(0, 7);
+      if (!monthGroups[m]) monthGroups[m] = [];
+      monthGroups[m].push(tx);
+    });
+    const sortedMonths = Object.keys(monthGroups).sort((a, b) => b.localeCompare(a));
 
-      {/* Month Summary Bar */}
-      <div className="flex gap-2 mb-4">
-        <div className="flex-1 bg-emerald-50 rounded-xl p-3 text-center">
-          <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Income</p>
-          <p className="text-base font-bold text-emerald-700">{formatMoney(monthStats.income)}</p>
-        </div>
-        <div className="flex-1 bg-red-50 rounded-xl p-3 text-center">
-          <p className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Expenses</p>
-          <p className="text-base font-bold text-red-600">{formatMoney(monthStats.expenses)}</p>
-        </div>
-        <div className="flex-1 bg-gray-50 rounded-xl p-3 text-center">
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Needs</p>
-          <p className="text-base font-bold text-gray-700">{formatMoney(monthStats.needs)}</p>
-        </div>
-      </div>
+    const groupByDay = (txs: Transaction[]) => {
+      const days: Record<string, Transaction[]> = {};
+      txs.forEach(tx => {
+        if (!days[tx.date]) days[tx.date] = [];
+        days[tx.date].push(tx);
+      });
+      return Object.entries(days).sort(([a], [b]) => b.localeCompare(a));
+    };
 
-      <div className="space-y-1.5 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
-        {transactions.length === 0 ? (
-          <div className="text-center py-12 lg:col-span-2">
+    const getMonthTotals = (txs: Transaction[]) => {
+      const inc = txs.filter(t => t.type === 'income' && !t.isPending).reduce((s, t) => s + t.amount, 0);
+      const exp = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      return { income: inc, expenses: exp, net: inc - exp };
+    };
+
+    const getDayTotal = (txs: Transaction[]) => {
+      return txs.reduce((s, t) => s + (t.type === 'expense' ? -t.amount : (t.isPending ? 0 : t.amount)), 0);
+    };
+
+    const formatMonthLabel = (m: string) => {
+      const [y, mo] = m.split('-');
+      return new Date(parseInt(y), parseInt(mo) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    };
+
+    const formatDayLabel = (d: string) => {
+      const dt = new Date(d + 'T12:00:00');
+      const today = formatDate();
+      const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+      const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+      if (d === today) return 'Today';
+      if (d === yStr) return 'Yesterday';
+      return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    };
+
+    return (
+      <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
+        <div className="flex items-center gap-3 pt-4 mb-4">
+          <button onClick={() => window.history.back()} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
+          <h1 className="text-xl font-bold text-gray-900 flex-1">Transaction History</h1>
+          <button onClick={() => setShowAddTx(true)}
+            className="flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-semibold px-3 py-2 rounded-xl active:scale-95 transition-transform">
+            <Plus size={14} /> Log
+          </button>
+        </div>
+
+        {sortedMonths.length === 0 ? (
+          <div className="text-center py-16">
             <p className="text-3xl mb-2">📝</p>
-            <p className="text-sm text-gray-400">No transactions this month</p>
+            <p className="text-sm text-gray-400 mb-4">No transactions yet</p>
+            <button onClick={async () => { const n = await seedDemoTransactions(); if (n) await refresh(); }}
+              className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl active:scale-95 transition-transform">
+              🧪 Load Demo Data ({2} months)
+            </button>
           </div>
-        ) : transactions.map(tx => {
-          const catInfo = (tx.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).find(c => c.name === tx.category);
-          return (
-            <div key={tx.id} className={`flex items-center gap-3 bg-white rounded-xl px-4 py-3 ${tx.isPending ? 'border border-dashed border-amber-200' : ''}`}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base"
-                style={{ backgroundColor: `${catInfo?.color || '#6b7280'}12` }}>
-                {catInfo?.icon || '📦'}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800">
-                  {tx.isPending && <span className="text-amber-500">⏳ </span>}{tx.note || tx.category}
-                </p>
-                <p className="text-[10px] text-gray-400">
-                  {tx.category} · {tx.isPending ? 'Expected' : new Date(tx.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`text-sm font-bold ${tx.type === 'income' ? (tx.isPending ? 'text-amber-500' : 'text-emerald-600') : 'text-gray-900'}`}>
-                  {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
-                </span>
-                {tx.isPending ? (
-                  <button onClick={async () => { await transactionAPI.markReceived(tx.id); await refresh(); }}
-                    className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg active:scale-95 transition-transform whitespace-nowrap">
-                    ✅ Got it
+        ) : (
+          <div className="space-y-3">
+            {sortedMonths.map(month => {
+              const txs = monthGroups[month];
+              const totals = getMonthTotals(txs);
+              const isExpanded = expandedMonth === month;
+              const isCurrentMonth = month === currentMonth;
+
+              return (
+                <div key={month} className="animate-fade-up">
+                  {/* Month Header — clickable accordion */}
+                  <button
+                    onClick={() => setExpandedMonth(isExpanded ? null : month)}
+                    className={`w-full flex items-center gap-3 rounded-2xl p-3.5 transition-all active:scale-[0.99] ${
+                      isExpanded
+                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 shadow-lg shadow-emerald-200/40'
+                        : 'bg-white border border-gray-100 hover:border-gray-200'
+                    }`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+                      isExpanded ? 'bg-white/20' : 'bg-gray-50'
+                    }`}>
+                      📅
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className={`text-sm font-bold ${isExpanded ? 'text-white' : 'text-gray-800'}`}>
+                        {formatMonthLabel(month)}
+                        {isCurrentMonth && <span className={`ml-1.5 text-[10px] font-medium ${isExpanded ? 'text-emerald-200' : 'text-emerald-500'}`}>(current)</span>}
+                      </p>
+                      <p className={`text-[10px] ${isExpanded ? 'text-white/60' : 'text-gray-400'}`}>
+                        {txs.length} transaction{txs.length !== 1 ? 's' : ''} · <span className={`font-semibold ${totals.net >= 0 ? (isExpanded ? 'text-emerald-200' : 'text-emerald-600') : (isExpanded ? 'text-red-200' : 'text-red-500')}`}>{totals.net >= 0 ? '+' : ''}{formatMoney(totals.net)}</span>
+                      </p>
+                    </div>
+                    <div className="text-right mr-1">
+                      <p className={`text-[10px] ${isExpanded ? 'text-emerald-200' : 'text-emerald-500'} font-semibold`}>+{formatMoney(totals.income)}</p>
+                      <p className={`text-[10px] ${isExpanded ? 'text-red-200' : 'text-red-400'} font-semibold`}>-{formatMoney(totals.expenses)}</p>
+                    </div>
+                    <ChevronDown size={16} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180 text-white/60' : 'text-gray-300'}`} />
                   </button>
-                ) : tx.type === 'income' ? (
-                  <button onClick={async () => { await transactionAPI.markUnreceived(tx.id); await refresh(); }}
-                    className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md active:scale-95 transition-transform whitespace-nowrap">
-                    ⏳ Undo
-                  </button>
-                ) : null}
-                <button onClick={async () => { await transactionAPI.delete(tx.id); await refresh(); }}
-                  className="p-1 rounded-lg hover:bg-red-50">
-                  <Trash2 size={13} className="text-gray-300" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+
+                  {/* Expanded: Day cards */}
+                  {isExpanded && (
+                    <div className="mt-2 space-y-2 pl-1">
+                      {groupByDay(txs).map(([day, dayTxs]) => {
+                        const dayNet = getDayTotal(dayTxs);
+                        return (
+                          <div key={day} className="bg-white rounded-xl overflow-hidden border border-gray-100">
+                            {/* Day header */}
+                            <div className="flex items-center justify-between px-3.5 py-2 bg-gray-50/70 border-b border-gray-100">
+                              <p className="text-xs font-bold text-gray-600">{formatDayLabel(day)}</p>
+                              <p className={`text-[11px] font-bold ${dayNet >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {dayNet >= 0 ? '+' : ''}{formatMoney(dayNet)}
+                              </p>
+                            </div>
+                            {/* Day transactions */}
+                            <div className="divide-y divide-gray-50">
+                              {dayTxs.map(tx => {
+                                const catInfo = (tx.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).find(c => c.name === tx.category);
+                                return (
+                                  <div key={tx.id} className={`flex items-center gap-2.5 px-3.5 py-2.5 ${tx.isPending ? 'bg-amber-50/30' : ''}`}>
+                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                                      style={{ backgroundColor: `${catInfo?.color || '#6b7280'}12` }}>
+                                      {catInfo?.icon || '📦'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-gray-800 truncate">
+                                        {tx.isPending && <span className="text-amber-500">⏳ </span>}{tx.note || tx.category}
+                                      </p>
+                                      <p className="text-[10px] text-gray-400">{tx.category}{tx.isPending ? ' · Expected' : ''}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`text-sm font-bold ${tx.type === 'income' ? (tx.isPending ? 'text-amber-500' : 'text-emerald-600') : 'text-gray-900'}`}>
+                                        {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
+                                      </span>
+                                      {tx.isPending && (
+                                        <button onClick={async () => { await transactionAPI.markReceived(tx.id); await refresh(); }}
+                                          className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded active:scale-95 transition-transform">✅</button>
+                                      )}
+                                      {!tx.isPending && tx.type === 'income' && (
+                                        <button onClick={async () => { await transactionAPI.markUnreceived(tx.id); await refresh(); }}
+                                          className="text-[9px] font-semibold text-amber-600 bg-amber-50 px-1 py-0.5 rounded active:scale-95 transition-transform">↩</button>
+                                      )}
+                                      <button onClick={async () => { await transactionAPI.delete(tx.id); await refresh(); }}
+                                        className="p-0.5 rounded hover:bg-red-50">
+                                        <Trash2 size={12} className="text-gray-300" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );  
+  }
 
   // ═══════════════════════════════════════════════════════════════
   //  BUDGETS VIEW
@@ -623,7 +718,7 @@ const Money: React.FC = () => {
       </div>
 
       {/* ══════════ TODAY CARD — Budget + Expenses ══════════ */}
-      <div className="bg-white rounded-2xl mb-3 overflow-hidden animate-fade-up" style={{ animationDelay: '80ms' }}>
+      <div className="bg-gradient-to-br from-slate-50 via-white to-emerald-50 rounded-2xl mb-3 overflow-hidden border border-gray-100 animate-fade-up" style={{ animationDelay: '80ms' }}>
         <div className="p-4 pb-3">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
@@ -641,7 +736,7 @@ const Money: React.FC = () => {
             </div>
             <p className="text-sm font-semibold text-gray-400">{formatMoney(dailyBudget.spent)} spent</p>
           </div>
-          <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-gray-200/60 rounded-full overflow-hidden">
             <div className={`h-full rounded-full transition-all duration-500 ${
               dailyBudget.pct > 90 ? 'bg-red-500' : dailyBudget.pct > 70 ? 'bg-amber-400' : 'bg-emerald-500'
             }`} style={{ width: `${Math.min(dailyBudget.pct, 100)}%` }} />
@@ -651,7 +746,7 @@ const Money: React.FC = () => {
           )}
         </div>
         <div onClick={() => navigateTo('today')}
-          className="border-t border-gray-100 px-4 py-3 cursor-pointer active:bg-gray-50 transition-colors">
+          className="border-t border-gray-100/80 px-4 py-3 cursor-pointer active:bg-gray-50/50 transition-colors">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Spent on</p>
             <span className="text-[10px] text-emerald-600 font-semibold">Details →</span>
@@ -661,7 +756,7 @@ const Money: React.FC = () => {
               {todayByCategory.map(item => {
                 const catInfo = EXPENSE_CATEGORIES.find(c => c.name === item.category);
                 return (
-                  <div key={item.category} className="flex items-center gap-1 bg-gray-50 rounded-lg px-2 py-1">
+                  <div key={item.category} className="flex items-center gap-1 bg-white/80 rounded-lg px-2 py-1 shadow-sm">
                     <span className="text-xs">{catInfo?.icon || '📦'}</span>
                     <span className="text-[11px] font-semibold text-gray-700">{formatMoney(item.total)}</span>
                   </div>
@@ -674,29 +769,33 @@ const Money: React.FC = () => {
         </div>
       </div>
 
-      {/* ══════════ QUICK NAV — 4 destinations in a grid ══════════ */}
+      {/* ══════════ QUICK NAV — 4 attractive cards ══════════ */}
       <div className="grid grid-cols-4 gap-2 mb-3 animate-fade-up" style={{ animationDelay: '120ms' }}>
-        <button onClick={() => navigateTo('transactions')} className="bg-white rounded-xl py-2.5 text-center active:bg-gray-50 transition-colors">
-          <p className="text-base mb-0.5">📝</p>
-          <p className="text-[10px] text-gray-500 font-medium">History</p>
+        <button onClick={() => navigateTo('transactions')}
+          className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl py-3 text-center active:scale-[0.96] transition-transform shadow-md shadow-blue-200/50">
+          <p className="text-lg mb-0.5">📝</p>
+          <p className="text-[10px] text-white font-bold">History</p>
         </button>
-        <button onClick={() => navigateTo('budgets')} className="bg-white rounded-xl py-2.5 text-center active:bg-gray-50 transition-colors">
-          <p className="text-base mb-0.5">📊</p>
-          <p className="text-[10px] text-gray-500 font-medium">Budgets</p>
+        <button onClick={() => navigateTo('budgets')}
+          className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl py-3 text-center active:scale-[0.96] transition-transform shadow-md shadow-emerald-200/50">
+          <p className="text-lg mb-0.5">📊</p>
+          <p className="text-[10px] text-white font-bold">Budgets</p>
         </button>
-        <button onClick={() => navigateTo('savings')} className="bg-white rounded-xl py-2.5 text-center active:bg-gray-50 transition-colors">
-          <p className="text-base mb-0.5">🐷</p>
-          <p className="text-[10px] text-gray-500 font-medium">Savings</p>
+        <button onClick={() => navigateTo('savings')}
+          className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl py-3 text-center active:scale-[0.96] transition-transform shadow-md shadow-purple-200/50">
+          <p className="text-lg mb-0.5">🐷</p>
+          <p className="text-[10px] text-white font-bold">Savings</p>
         </button>
-        <button onClick={() => navigateTo('insights')} className="bg-white rounded-xl py-2.5 text-center active:bg-gray-50 transition-colors">
-          <p className="text-base mb-0.5">💡</p>
-          <p className="text-[10px] text-gray-500 font-medium">Insights</p>
+        <button onClick={() => navigateTo('insights')}
+          className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl py-3 text-center active:scale-[0.96] transition-transform shadow-md shadow-amber-200/50">
+          <p className="text-lg mb-0.5">💡</p>
+          <p className="text-[10px] text-white font-bold">Insights</p>
         </button>
       </div>
 
       {/* ══════════ CATEGORY BUDGETS (if set) ══════════ */}
       {budgets.length > 0 && (
-        <div className="bg-white rounded-2xl p-4 mb-3 animate-fade-up" style={{ animationDelay: '160ms' }}>
+        <div className="bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/40 rounded-2xl p-4 mb-3 border border-gray-100 animate-fade-up" style={{ animationDelay: '160ms' }}>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
               <BarChart3 size={13} className="text-gray-400" /> Monthly Budgets
@@ -716,7 +815,7 @@ const Money: React.FC = () => {
                         {formatMoney(b.spent)} / {formatMoney(b.limit)}
                       </span>
                     </div>
-                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="w-full h-2 bg-white/80 rounded-full overflow-hidden">
                       <div className={`h-full rounded-full transition-all ${b.exceeded ? 'bg-red-500' : b.pct >= 80 ? 'bg-amber-400' : 'bg-emerald-500'}`}
                         style={{ width: `${Math.min(b.pct, 100)}%` }} />
                     </div>
@@ -762,59 +861,10 @@ const Money: React.FC = () => {
         </div>
       )}
 
-      {/* ══════════ RECENT TRANSACTIONS ══════════ */}
-      {transactions.length > 0 && (
-        <div className="animate-fade-up" style={{ animationDelay: '240ms' }}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent</h3>
-            <button onClick={() => navigateTo('transactions')} className="text-[10px] text-emerald-600 font-semibold">All →</button>
-          </div>
-          <div className="space-y-1.5">
-            {transactions.slice(0, 5).map(tx => {
-              const catInfo = (tx.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).find(c => c.name === tx.category);
-              return (
-                <div key={tx.id} className={`flex items-center gap-3 bg-white rounded-xl px-3.5 py-2.5 ${tx.isPending ? 'border border-dashed border-amber-200' : ''}`}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-                    style={{ backgroundColor: `${catInfo?.color || '#6b7280'}12` }}>
-                    {catInfo?.icon || '📦'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">
-                      {tx.isPending && <span className="text-amber-500">⏳ </span>}{tx.note || tx.category}
-                    </p>
-                    <p className="text-[10px] text-gray-400">
-                      {tx.isPending ? 'Expected' : new Date(tx.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </p>
-                  </div>
-                  {tx.isPending ? (
-                    <button onClick={async () => { await transactionAPI.markReceived(tx.id); await refresh(); }}
-                      className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg active:scale-95 transition-transform whitespace-nowrap">
-                      ✅ Received
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-gray-900'}`}>
-                        {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
-                      </span>
-                      {tx.type === 'income' && (
-                        <button onClick={async () => { await transactionAPI.markUnreceived(tx.id); await refresh(); }}
-                          className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md active:scale-95 transition-transform whitespace-nowrap">
-                          ↩
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       {/* ═══ START CHALLENGE (if none active) ═══ */}
       {activeChallenges.length === 0 && monthStats.transactionCount > 0 && (
         <button onClick={handleStartChallenge}
-          className="w-full bg-white rounded-2xl p-4 mb-3 text-center border border-dashed border-gray-200 active:bg-gray-50 transition-colors animate-fade-up" style={{ animationDelay: '280ms' }}>
+          className="w-full bg-white rounded-2xl p-4 mb-3 text-center border border-dashed border-gray-200 active:bg-gray-50 transition-colors animate-fade-up" style={{ animationDelay: '240ms' }}>
           <p className="text-sm font-semibold text-gray-600">🎯 Start a Money Challenge</p>
           <p className="text-[10px] text-gray-400 mt-0.5">Build better habits & earn XP</p>
         </button>
