@@ -286,6 +286,14 @@ export const transactionAPI = {
     return updated;
   },
 
+  async markUnreceived(id: string): Promise<Transaction> {
+    const tx = await db.transactions.get(id);
+    if (!tx) throw new Error('Transaction not found');
+    const updated = { ...tx, isPending: true };
+    await db.transactions.put(updated);
+    return updated;
+  },
+
   async getTodaySpending(): Promise<number> {
     const today = formatDate();
     const txs = await db.transactions.filter(t => t.date === today && t.type === 'expense').toArray();

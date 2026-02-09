@@ -67,6 +67,26 @@ const ScorePop: React.FC<{ value: string; correct: boolean }> = ({ value, correc
 
 const Memory: React.FC = () => {
   const [view, setView] = useState<View>('hub');
+
+  // Sync navigable sub-views with browser history so back button works
+  const navigableViews = new Set<View>(['games', 'progress', 'handbook', 'recall', 'recall-history']);
+  const navigateTo = useCallback((v: View) => {
+    if (navigableViews.has(v)) {
+      window.history.pushState({ memoryView: v }, '');
+    }
+    setView(v);
+  }, []);
+
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      if (navigableViews.has(view as any)) {
+        setView(e.state?.memoryView || 'hub');
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [view]);
+
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [todayGames, setTodayGames] = useState<string[]>([]);
   const [dailyGames] = useState<GameType[]>(getDailyGames());
@@ -238,21 +258,21 @@ const Memory: React.FC = () => {
      HANDBOOK — The Memory Master's Guide
      ═══════════════════════════════════════════════════════════════ */
   if (view === 'handbook') {
-    return <HandbookView onBack={() => setView('hub')} profile={profile} />;
+    return <HandbookView onBack={() => window.history.back()} profile={profile} />;
   }
 
   /* ═══════════════════════════════════════════════════════════════
      DAILY RECALL JOURNAL
      ═══════════════════════════════════════════════════════════════ */
   if (view === 'recall') {
-    return <DailyRecallView onBack={() => { setView('hub'); refresh(); }} />;
+    return <DailyRecallView onBack={() => { window.history.back(); refresh(); }} />;
   }
 
   /* ═══════════════════════════════════════════════════════════════
      RECALL HISTORY
      ═══════════════════════════════════════════════════════════════ */
   if (view === 'recall-history') {
-    return <RecallHistoryView onBack={() => setView('hub')} />;
+    return <RecallHistoryView onBack={() => window.history.back()} />;
   }
 
   /* ═══════════════════════════════════════════════════════════════
@@ -262,7 +282,7 @@ const Memory: React.FC = () => {
     return (
       <div className="page-container max-w-lg lg:max-w-4xl mx-auto">
         <div className="flex items-center gap-3 pt-4 mb-5">
-          <button onClick={() => setView('hub')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
+          <button onClick={() => window.history.back()} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
           <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Your Progress</h1>
         </div>
 
@@ -400,7 +420,7 @@ const Memory: React.FC = () => {
     return (
       <div className="page-container max-w-lg lg:max-w-4xl mx-auto">
         <div className="flex items-center gap-3 pt-4 mb-5">
-          <button onClick={() => setView('hub')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
+          <button onClick={() => window.history.back()} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
           <h1 className="text-xl lg:text-2xl font-bold text-gray-900">All Games</h1>
         </div>
         <div className="space-y-2.5 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
@@ -446,7 +466,7 @@ const Memory: React.FC = () => {
             <p className="text-xs text-gray-400 font-medium">Brain Training</p>
             <h1 className="text-xl lg:text-2xl font-bold text-gray-900">Memory Lab</h1>
           </div>
-          <button onClick={() => setView('progress')} className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-xl text-xs font-bold active:bg-indigo-100 transition-colors">
+          <button onClick={() => navigateTo('progress')} className="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-xl text-xs font-bold active:bg-indigo-100 transition-colors">
             <TrendingUp size={14} /> Progress
           </button>
         </div>
@@ -498,10 +518,10 @@ const Memory: React.FC = () => {
               <p className="text-xs font-bold text-violet-800">Today's Recall Done ✓</p>
               <p className="text-[10px] text-violet-500">{recallStreak}d recall streak</p>
             </div>
-            <button onClick={() => setView('recall-history')} className="text-[10px] text-violet-600 font-bold px-2 py-1 bg-violet-100 rounded-lg">History</button>
+            <button onClick={() => navigateTo('recall-history')} className="text-[10px] text-violet-600 font-bold px-2 py-1 bg-violet-100 rounded-lg">History</button>
           </div>
         ) : (
-          <button onClick={() => setView('recall')}
+          <button onClick={() => navigateTo('recall')}
             className={`w-full text-left rounded-2xl p-3.5 mb-4 flex items-center gap-3 active:scale-[0.98] transition-transform ${
               isRecallTime
                 ? 'bg-gradient-to-r from-violet-600 to-indigo-700 shadow-lg shadow-violet-600/20 animate-pulse-glow'
@@ -583,7 +603,7 @@ const Memory: React.FC = () => {
       </div>
 
       {/* All Games */}
-      <button onClick={() => setView('games')}
+      <button onClick={() => navigateTo('games')}
         className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3 active:bg-gray-50 transition-colors animate-fade-up" style={{ animationDelay: '180ms' }}>
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/20">
           <Zap size={20} className="text-white" />
@@ -640,7 +660,7 @@ const Memory: React.FC = () => {
       ); })()}
 
       {/* Handbook Button */}
-      <button onClick={() => setView('handbook')}
+      <button onClick={() => navigateTo('handbook')}
         className="mt-4 w-full bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200/60 flex items-center gap-3 active:scale-[0.98] transition-transform animate-fade-up" style={{ animationDelay: '240ms' }}>
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md shadow-amber-500/20">
           <BookOpen size={20} className="text-white" />

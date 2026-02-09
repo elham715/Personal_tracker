@@ -20,6 +20,25 @@ type View = 'hub' | 'today' | 'transactions' | 'budgets' | 'savings' | 'insights
 
 const Money: React.FC = () => {
   const [view, setView] = useState<View>('hub');
+
+  // Sync sub-views with browser history so back button works
+  const navigateTo = useCallback((v: View) => {
+    if (v !== 'hub') {
+      window.history.pushState({ moneyView: v }, '');
+    }
+    setView(v);
+  }, []);
+
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      if (view !== 'hub') {
+        setView(e.state?.moneyView || 'hub');
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [view]);
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<any[]>([]);
   const [savings, setSavings] = useState<SavingsGoal[]>([]);
@@ -149,7 +168,7 @@ const Money: React.FC = () => {
   if (view === 'today') return (
     <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
       <div className="flex items-center gap-3 pt-4 mb-4">
-        <button onClick={() => setView('hub')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
+        <button onClick={() => window.history.back()} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
         <h1 className="text-xl font-bold text-gray-900 flex-1">Today's Expenses</h1>
         <button onClick={() => { setTxType('expense'); setTxDate(formatDate()); setShowAddTx(true); }}
           className="flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-semibold px-3 py-2 rounded-xl active:scale-95 transition-transform">
@@ -253,7 +272,7 @@ const Money: React.FC = () => {
   if (view === 'transactions') return (
     <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
       <div className="flex items-center gap-3 pt-4 mb-4">
-        <button onClick={() => setView('hub')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
+        <button onClick={() => window.history.back()} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
         <h1 className="text-xl font-bold text-gray-900 flex-1">All Transactions</h1>
         <button onClick={() => setShowAddTx(true)}
           className="flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-semibold px-3 py-2 rounded-xl active:scale-95 transition-transform">
@@ -303,12 +322,17 @@ const Money: React.FC = () => {
                 <span className={`text-sm font-bold ${tx.type === 'income' ? (tx.isPending ? 'text-amber-500' : 'text-emerald-600') : 'text-gray-900'}`}>
                   {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
                 </span>
-                {tx.isPending && (
+                {tx.isPending ? (
                   <button onClick={async () => { await transactionAPI.markReceived(tx.id); await refresh(); }}
                     className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg active:scale-95 transition-transform whitespace-nowrap">
                     ✅ Got it
                   </button>
-                )}
+                ) : tx.type === 'income' ? (
+                  <button onClick={async () => { await transactionAPI.markUnreceived(tx.id); await refresh(); }}
+                    className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md active:scale-95 transition-transform whitespace-nowrap">
+                    ⏳ Undo
+                  </button>
+                ) : null}
                 <button onClick={async () => { await transactionAPI.delete(tx.id); await refresh(); }}
                   className="p-1 rounded-lg hover:bg-red-50">
                   <Trash2 size={13} className="text-gray-300" />
@@ -327,7 +351,7 @@ const Money: React.FC = () => {
   if (view === 'budgets') return (
     <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
       <div className="flex items-center gap-3 pt-4 mb-4">
-        <button onClick={() => setView('hub')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
+        <button onClick={() => window.history.back()} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
         <h1 className="text-xl font-bold text-gray-900 flex-1">Category Budgets</h1>
         <button onClick={() => setShowAddBudget(true)} className="flex items-center gap-1 text-xs font-semibold text-emerald-600"><Plus size={14} /> Add</button>
       </div>
@@ -383,7 +407,7 @@ const Money: React.FC = () => {
   if (view === 'savings') return (
     <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
       <div className="flex items-center gap-3 pt-4 mb-4">
-        <button onClick={() => setView('hub')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
+        <button onClick={() => window.history.back()} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
         <h1 className="text-xl font-bold text-gray-900 flex-1">Savings Goals</h1>
         <button onClick={() => setShowAddSavings(true)} className="flex items-center gap-1 text-xs font-semibold text-emerald-600"><Plus size={14} /> New</button>
       </div>
@@ -436,7 +460,7 @@ const Money: React.FC = () => {
   if (view === 'insights') return (
     <div className="page-container max-w-lg lg:max-w-3xl mx-auto">
       <div className="flex items-center gap-3 pt-4 mb-5">
-        <button onClick={() => setView('hub')} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
+        <button onClick={() => window.history.back()} className="p-1"><ChevronLeft size={20} className="text-gray-400" /></button>
         <h1 className="text-xl font-bold text-gray-900">Insights & Patterns</h1>
       </div>
 
@@ -538,60 +562,61 @@ const Money: React.FC = () => {
           </h1>
           <p className="text-xs text-gray-400">{todayDate} · {remainingDays} day{remainingDays !== 1 ? 's' : ''} left this month</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {profile.loggingStreak > 0 && (
             <span className="text-xs font-semibold text-orange-500 bg-orange-50 px-2.5 py-1 rounded-full">🔥 {profile.loggingStreak}d</span>
           )}
+          <button onClick={() => { setTxType('income'); setTxCategory('Allowance'); setShowAddTx(true); }}
+            className="flex items-center gap-1 bg-white text-emerald-700 text-xs font-semibold px-3 py-2 rounded-xl active:scale-95 transition-transform border border-emerald-200">
+            <Plus size={14} /> Income
+          </button>
           <button onClick={() => { setTxType('expense'); setShowAddTx(true); }}
-            className="flex items-center gap-1.5 bg-emerald-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl active:scale-95 transition-transform shadow-sm shadow-emerald-200">
-            <Plus size={15} /> Log
+            className="flex items-center gap-1 bg-emerald-600 text-white text-xs font-semibold px-3 py-2 rounded-xl active:scale-95 transition-transform shadow-sm shadow-emerald-200">
+            <Plus size={14} /> Expense
           </button>
         </div>
       </div>
 
       {/* ══════════ SECTION 1: Current Balance ══════════ */}
-      <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 rounded-2xl p-5 mb-3 shadow-lg shadow-emerald-200/40 animate-fade-up" style={{ animationDelay: '40ms' }}>
-        <p className="text-[10px] text-white/50 font-bold uppercase tracking-wider mb-1">Current Balance</p>
-        <p className={`text-3xl lg:text-4xl font-bold mb-3 ${monthStats.net >= 0 ? 'text-white' : 'text-red-200'}`}>
+      <div className="bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 rounded-2xl p-3.5 lg:p-5 mb-3 shadow-lg shadow-emerald-200/40 animate-fade-up" style={{ animationDelay: '40ms' }}>
+        <div className="flex items-center justify-between mb-0.5">
+          <p className="text-[10px] text-white/50 font-bold uppercase tracking-wider">Current Balance</p>
+          {monthStats.pendingIncome > 0 && (
+            <p className="text-[10px] text-amber-200/70">
+              ⏳ <span className="font-semibold text-amber-200">{formatMoney(monthStats.pendingIncome)}</span> expected
+            </p>
+          )}
+        </div>
+        <p className={`text-2xl lg:text-4xl font-bold mb-1.5 ${monthStats.net >= 0 ? 'text-white' : 'text-red-200'}`}>
           {formatMoney(monthStats.net)}
         </p>
-        <div className="flex gap-5">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
-              <ArrowUpRight size={14} className="text-emerald-200" />
+        <div className="flex gap-4">
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-6 rounded-md bg-white/20 flex items-center justify-center">
+              <ArrowUpRight size={12} className="text-emerald-200" />
             </div>
             <div>
-              <p className="text-white text-sm font-semibold">{formatMoney(monthStats.income)}</p>
-              <p className="text-white/40 text-[10px]">Income</p>
+              <p className="text-white text-xs font-semibold leading-tight">{formatMoney(monthStats.income)}</p>
+              <p className="text-white/40 text-[9px]">Income</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
-              <ArrowDownRight size={14} className="text-red-200" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-6 h-6 rounded-md bg-white/20 flex items-center justify-center">
+              <ArrowDownRight size={12} className="text-red-200" />
             </div>
             <div>
-              <p className="text-white text-sm font-semibold">{formatMoney(monthStats.expenses)}</p>
-              <p className="text-white/40 text-[10px]">Spent</p>
+              <p className="text-white text-xs font-semibold leading-tight">{formatMoney(monthStats.expenses)}</p>
+              <p className="text-white/40 text-[9px]">Spent</p>
             </div>
           </div>
         </div>
 
-        {/* Pending Income */}
-        {monthStats.pendingIncome > 0 && (
-          <div className="mt-2 flex items-center gap-1.5">
-            <span className="text-[10px] text-amber-200/70">⏳</span>
-            <p className="text-[11px] text-amber-200/70">
-              <span className="font-semibold text-amber-200">{formatMoney(monthStats.pendingIncome)}</span> expected (not received yet)
-            </p>
-          </div>
-        )}
-
         {/* Month Planning Info */}
         {(monthStats.net + monthStats.pendingIncome) > 0 && remainingDays > 0 && (
-          <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
-            <p className="text-[11px] text-white/50">
-              <Calendar size={11} className="inline mr-1 -mt-0.5" />
-              {remainingDays} days left → You can spend <span className="text-white font-semibold">{formatMoney(budgetPerDay)}/day</span>{monthStats.pendingIncome > 0 ? ' (incl. expected)' : ''}
+          <div className="mt-2 pt-2 border-t border-white/10">
+            <p className="text-[10px] text-white/50">
+              <Calendar size={10} className="inline mr-1 -mt-0.5" />
+              {remainingDays} days left → <span className="text-white font-semibold">{formatMoney(budgetPerDay)}/day</span>{monthStats.pendingIncome > 0 ? ' (incl. expected)' : ''}
             </p>
           </div>
         )}
@@ -626,7 +651,7 @@ const Money: React.FC = () => {
       </div>
 
       {/* ══════════ SECTION 3: Today's Expenses Preview ══════════ */}
-      <button onClick={() => setView('today')}
+      <button onClick={() => navigateTo('today')}
         className="w-full bg-white rounded-2xl p-4 mb-3 text-left active:bg-gray-50 transition-colors animate-fade-up" style={{ animationDelay: '120ms' }}>
         <div className="flex items-center justify-between mb-2.5">
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Today's Expenses</h3>
@@ -650,26 +675,22 @@ const Money: React.FC = () => {
       </button>
 
       {/* ══════════ SECTION 4: Quick Actions ══════════ */}
-      <div className="grid grid-cols-4 gap-2 mb-3 animate-fade-up" style={{ animationDelay: '160ms' }}>
-        <button onClick={() => { setTxType('expense'); setShowAddTx(true); }}
-          className="bg-white rounded-xl py-3 text-center active:scale-95 transition-transform">
-          <p className="text-lg mb-0.5">💸</p>
-          <p className="text-[10px] font-semibold text-gray-600">Expense</p>
+      <div className="grid grid-cols-2 gap-2 mb-3 animate-fade-up" style={{ animationDelay: '160ms' }}>
+        <button onClick={() => navigateTo('savings')}
+          className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl p-3.5 text-left active:scale-[0.98] transition-transform border border-purple-100">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xl">🐷</span>
+            <p className="text-sm font-bold text-purple-800">Savings</p>
+          </div>
+          <p className="text-[10px] text-purple-500">{savings.length > 0 ? `${savings.length} goal${savings.length > 1 ? 's' : ''} active` : 'Start saving today →'}</p>
         </button>
-        <button onClick={() => { setTxType('income'); setTxCategory('Allowance'); setShowAddTx(true); }}
-          className="bg-white rounded-xl py-3 text-center active:scale-95 transition-transform">
-          <p className="text-lg mb-0.5">💵</p>
-          <p className="text-[10px] font-semibold text-gray-600">Income</p>
-        </button>
-        <button onClick={() => setView('savings')}
-          className="bg-white rounded-xl py-3 text-center active:scale-95 transition-transform">
-          <p className="text-lg mb-0.5">🐷</p>
-          <p className="text-[10px] font-semibold text-gray-600">Savings</p>
-        </button>
-        <button onClick={() => setView('insights')}
-          className="bg-white rounded-xl py-3 text-center active:scale-95 transition-transform">
-          <p className="text-lg mb-0.5">📊</p>
-          <p className="text-[10px] font-semibold text-gray-600">Insights</p>
+        <button onClick={() => navigateTo('insights')}
+          className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-3.5 text-left active:scale-[0.98] transition-transform border border-amber-100">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xl">📊</span>
+            <p className="text-sm font-bold text-amber-800">Insights</p>
+          </div>
+          <p className="text-[10px] text-amber-500">See spending patterns →</p>
         </button>
       </div>
 
@@ -680,7 +701,7 @@ const Money: React.FC = () => {
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
               <BarChart3 size={13} className="text-gray-400" /> Monthly Budgets
             </h3>
-            <button onClick={() => setView('budgets')} className="text-[10px] text-emerald-600 font-semibold">Manage →</button>
+            <button onClick={() => navigateTo('budgets')} className="text-[10px] text-emerald-600 font-semibold">Manage →</button>
           </div>
           <div className="space-y-2.5">
             {budgets.slice(0, 4).map((b: any) => {
@@ -705,7 +726,7 @@ const Money: React.FC = () => {
             })}
           </div>
           {budgets.length > 4 && (
-            <button onClick={() => setView('budgets')} className="text-[10px] text-gray-400 mt-2">+{budgets.length - 4} more</button>
+            <button onClick={() => navigateTo('budgets')} className="text-[10px] text-gray-400 mt-2">+{budgets.length - 4} more</button>
           )}
         </div>
       )}
@@ -756,11 +777,11 @@ const Money: React.FC = () => {
 
       {/* ══════════ SECTION 7: Navigation Row ══════════ */}
       <div className="grid grid-cols-3 gap-2 mb-3 animate-fade-up" style={{ animationDelay: '280ms' }}>
-        <button onClick={() => setView('transactions')} className="bg-white rounded-xl py-3 text-center active:bg-gray-50 transition-colors">
+        <button onClick={() => navigateTo('transactions')} className="bg-white rounded-xl py-3 text-center active:bg-gray-50 transition-colors">
           <p className="text-sm font-semibold text-gray-700">📝</p>
           <p className="text-[10px] text-gray-400">{monthStats.transactionCount} transactions</p>
         </button>
-        <button onClick={() => setView('budgets')} className="bg-white rounded-xl py-3 text-center active:bg-gray-50 transition-colors">
+        <button onClick={() => navigateTo('budgets')} className="bg-white rounded-xl py-3 text-center active:bg-gray-50 transition-colors">
           <p className="text-sm font-semibold text-gray-700">📊</p>
           <p className="text-[10px] text-gray-400">{budgets.length} budget{budgets.length !== 1 ? 's' : ''}</p>
         </button>
@@ -775,7 +796,7 @@ const Money: React.FC = () => {
         <div className="animate-fade-up" style={{ animationDelay: '320ms' }}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent</h3>
-            <button onClick={() => setView('transactions')} className="text-[10px] text-emerald-600 font-semibold">All →</button>
+            <button onClick={() => navigateTo('transactions')} className="text-[10px] text-emerald-600 font-semibold">All →</button>
           </div>
           <div className="space-y-1.5">
             {transactions.slice(0, 5).map(tx => {
@@ -800,9 +821,17 @@ const Money: React.FC = () => {
                       ✅ Received
                     </button>
                   ) : (
-                    <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-gray-900'}`}>
-                      {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-gray-900'}`}>
+                        {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
+                      </span>
+                      {tx.type === 'income' && (
+                        <button onClick={async () => { await transactionAPI.markUnreceived(tx.id); await refresh(); }}
+                          className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-md active:scale-95 transition-transform whitespace-nowrap">
+                          ↩
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               );
@@ -857,14 +886,6 @@ const Money: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {/* Type Toggle */}
-              <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-                <button onClick={() => { setTxType('expense'); setTxCategory('Food'); }}
-                  className={`flex-1 text-xs font-semibold py-2.5 rounded-lg transition-all ${txType === 'expense' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400'}`}>💸 Expense</button>
-                <button onClick={() => { setTxType('income'); setTxCategory('Allowance'); }}
-                  className={`flex-1 text-xs font-semibold py-2.5 rounded-lg transition-all ${txType === 'income' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-400'}`}>💵 Income</button>
-              </div>
-
               {/* Amount */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</label>
