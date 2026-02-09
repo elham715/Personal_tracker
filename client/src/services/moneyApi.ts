@@ -373,6 +373,37 @@ export const transactionAPI = {
     if (txs.length === 0) return null;
     return txs.sort((a, b) => b.date.localeCompare(a.date))[0].date;
   },
+
+  async getTodayByCategory(): Promise<{ category: string; total: number; count: number }[]> {
+    const today = formatDate();
+    const txs = await db.transactions.filter(t => t.date === today && t.type === 'expense').toArray();
+    const map: Record<string, { total: number; count: number }> = {};
+    txs.forEach(t => {
+      if (!map[t.category]) map[t.category] = { total: 0, count: 0 };
+      map[t.category].total += t.amount;
+      map[t.category].count++;
+    });
+    return Object.entries(map)
+      .map(([category, v]) => ({ category, ...v }))
+      .sort((a, b) => b.total - a.total);
+  },
+
+  async getTodayTransactions(): Promise<Transaction[]> {
+    const today = formatDate();
+    return (await db.transactions.filter(t => t.date === today).toArray())
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+
+  getRemainingDaysInMonth(): number {
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    return lastDay - now.getDate();
+  },
+
+  getBudgetPerRemainingDay(balance: number): number {
+    const remaining = this.getRemainingDaysInMonth();
+    return remaining > 0 ? Math.round(balance / remaining) : balance;
+  },
 };
 
 // ── Budgets ──
