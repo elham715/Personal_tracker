@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Wallet, Plus, X, ArrowUpRight, ArrowDownRight, Trash2, ChevronLeft, ChevronDown,
+  Wallet, Plus, X, ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronDown,
   Award, Calendar, CreditCard, BarChart3,
 } from 'lucide-react';
+import SwipeToDelete from '@/components/SwipeToDelete';
 import { Transaction, SavingsGoal, MoneyProfile } from '@/types';
 import {
   transactionAPI, budgetAPI, savingsAPI, moneyProfileAPI,
@@ -242,25 +243,23 @@ const Money: React.FC = () => {
             {todayTxs.map(tx => {
               const catInfo = (tx.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).find(c => c.name === tx.category);
               return (
-                <div key={tx.id} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base"
-                    style={{ backgroundColor: `${catInfo?.color || '#6b7280'}12` }}>
-                    {catInfo?.icon || '📦'}
+                <SwipeToDelete key={tx.id} onDelete={async () => { await transactionAPI.delete(tx.id); await refresh(); }}>
+                  <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base"
+                      style={{ backgroundColor: `${catInfo?.color || '#6b7280'}12` }}>
+                      {catInfo?.icon || '📦'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800">{tx.note || tx.category}</p>
+                      <p className="text-[10px] text-gray-400">
+                        {tx.type === 'expense' ? (tx.isNeed ? '🎯 Need' : '💸 Want') : '💵 Income'}
+                      </p>
+                    </div>
+                    <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-gray-900'}`}>
+                      {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800">{tx.note || tx.category}</p>
-                    <p className="text-[10px] text-gray-400">
-                      {tx.type === 'expense' ? (tx.isNeed ? '🎯 Need' : '💸 Want') : '💵 Income'}
-                    </p>
-                  </div>
-                  <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-gray-900'}`}>
-                    {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
-                  </span>
-                  <button onClick={async () => { await transactionAPI.delete(tx.id); await refresh(); }}
-                    className="p-1 rounded-lg hover:bg-red-50">
-                    <Trash2 size={13} className="text-gray-300" />
-                  </button>
-                </div>
+                </SwipeToDelete>
               );
             })}
           </div>
@@ -394,35 +393,33 @@ const Money: React.FC = () => {
                               {dayTxs.map(tx => {
                                 const catInfo = (tx.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).find(c => c.name === tx.category);
                                 return (
-                                  <div key={tx.id} className={`flex items-center gap-2.5 px-3.5 py-2.5 ${tx.isPending ? 'bg-amber-50/30' : ''}`}>
-                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
-                                      style={{ backgroundColor: `${catInfo?.color || '#6b7280'}12` }}>
-                                      {catInfo?.icon || '📦'}
+                                  <SwipeToDelete key={tx.id} onDelete={async () => { await transactionAPI.delete(tx.id); await refresh(); }}>
+                                    <div className={`flex items-center gap-2.5 px-3.5 py-2.5 ${tx.isPending ? 'bg-amber-50/30' : 'bg-white'}`}>
+                                      <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
+                                        style={{ backgroundColor: `${catInfo?.color || '#6b7280'}12` }}>
+                                        {catInfo?.icon || '📦'}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-800 truncate">
+                                          {tx.isPending && <span className="text-amber-500">⏳ </span>}{tx.note || tx.category}
+                                        </p>
+                                        <p className="text-[10px] text-gray-400">{tx.category}{tx.isPending ? ' · Expected' : ''}</p>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className={`text-sm font-bold ${tx.type === 'income' ? (tx.isPending ? 'text-amber-500' : 'text-emerald-600') : 'text-gray-900'}`}>
+                                          {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
+                                        </span>
+                                        {tx.isPending && (
+                                          <button onClick={async () => { await transactionAPI.markReceived(tx.id); await refresh(); }}
+                                            className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded active:scale-95 transition-transform">✅</button>
+                                        )}
+                                        {!tx.isPending && tx.type === 'income' && (
+                                          <button onClick={async () => { await transactionAPI.markUnreceived(tx.id); await refresh(); }}
+                                            className="text-[9px] font-semibold text-amber-600 bg-amber-50 px-1 py-0.5 rounded active:scale-95 transition-transform">↩</button>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-gray-800 truncate">
-                                        {tx.isPending && <span className="text-amber-500">⏳ </span>}{tx.note || tx.category}
-                                      </p>
-                                      <p className="text-[10px] text-gray-400">{tx.category}{tx.isPending ? ' · Expected' : ''}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className={`text-sm font-bold ${tx.type === 'income' ? (tx.isPending ? 'text-amber-500' : 'text-emerald-600') : 'text-gray-900'}`}>
-                                        {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
-                                      </span>
-                                      {tx.isPending && (
-                                        <button onClick={async () => { await transactionAPI.markReceived(tx.id); await refresh(); }}
-                                          className="text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded active:scale-95 transition-transform">✅</button>
-                                      )}
-                                      {!tx.isPending && tx.type === 'income' && (
-                                        <button onClick={async () => { await transactionAPI.markUnreceived(tx.id); await refresh(); }}
-                                          className="text-[9px] font-semibold text-amber-600 bg-amber-50 px-1 py-0.5 rounded active:scale-95 transition-transform">↩</button>
-                                      )}
-                                      <button onClick={async () => { await transactionAPI.delete(tx.id); await refresh(); }}
-                                        className="p-0.5 rounded hover:bg-red-50">
-                                        <Trash2 size={12} className="text-gray-300" />
-                                      </button>
-                                    </div>
-                                  </div>
+                                  </SwipeToDelete>
                                 );
                               })}
                             </div>
@@ -462,33 +459,41 @@ const Money: React.FC = () => {
         <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
           {budgets.map((b: any) => {
             const catInfo = EXPENSE_CATEGORIES.find(c => c.name === b.category);
+            const gradColor = b.exceeded ? 'from-red-50 via-rose-50 to-red-100' : b.pct >= 80 ? 'from-amber-50 via-orange-50 to-amber-100' : 'from-emerald-50 via-teal-50 to-emerald-100';
+            const borderColor = b.exceeded ? 'border-red-100/60' : b.pct >= 80 ? 'border-amber-100/60' : 'border-emerald-100/60';
             return (
-              <div key={b.id} className="bg-white rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-xl">{catInfo?.icon || '📦'}</span>
-                    <div>
-                      <p className="text-sm font-semibold text-gray-800">{b.category}</p>
-                      <p className="text-[10px] text-gray-400">Monthly limit</p>
+              <SwipeToDelete key={b.id} onDelete={async () => { await budgetAPI.delete(b.id); await refresh(); }}>
+                <div className={`relative bg-gradient-to-br ${gradColor} rounded-2xl p-4 border ${borderColor} overflow-hidden`}>
+                  <div className="absolute -top-4 -right-4 w-16 h-16 bg-white/20 rounded-full blur-xl" />
+                  <div className="relative z-10">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center text-xl backdrop-blur-sm shadow-sm">
+                          {catInfo?.icon || '📦'}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-gray-800">{b.category}</p>
+                          <p className="text-[10px] text-gray-500">Monthly limit</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-base font-black ${b.exceeded ? 'text-red-600' : 'text-gray-900'}`}>{formatMoney(b.spent)}</p>
+                        <p className="text-[10px] text-gray-500 font-medium">of {formatMoney(b.limit)}</p>
+                      </div>
+                    </div>
+                    <div className="w-full h-3 bg-white/50 rounded-full overflow-hidden backdrop-blur-sm">
+                      <div className={`h-full rounded-full transition-all duration-700 shadow-sm ${b.exceeded ? 'bg-gradient-to-r from-red-400 to-red-500' : b.pct >= 80 ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-emerald-400 to-teal-500'}`}
+                        style={{ width: `${Math.min(b.pct, 100)}%` }} />
+                    </div>
+                    <div className="flex justify-between mt-1.5">
+                      <span className="text-[10px] text-gray-500 font-medium">{b.pct}% used</span>
+                      <span className={`text-[10px] font-bold ${b.remaining >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {b.remaining >= 0 ? `${formatMoney(b.remaining)} left` : `${formatMoney(Math.abs(b.remaining))} over`}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`text-base font-bold ${b.exceeded ? 'text-red-500' : 'text-gray-900'}`}>{formatMoney(b.spent)}</p>
-                    <p className="text-[10px] text-gray-400">of {formatMoney(b.limit)}</p>
-                  </div>
                 </div>
-                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-700 ${b.exceeded ? 'bg-red-500' : b.pct >= 80 ? 'bg-amber-400' : 'bg-emerald-500'}`}
-                    style={{ width: `${Math.min(b.pct, 100)}%` }} />
-                </div>
-                <div className="flex justify-between mt-1.5">
-                  <span className="text-[10px] text-gray-400">{b.pct}% used</span>
-                  <span className={`text-[10px] font-medium ${b.remaining >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                    {b.remaining >= 0 ? `${formatMoney(b.remaining)} left` : `${formatMoney(Math.abs(b.remaining))} over`}
-                  </span>
-                </div>
-                <button onClick={async () => { await budgetAPI.delete(b.id); await refresh(); }} className="mt-2 text-[10px] text-red-400 font-medium">Remove</button>
-              </div>
+              </SwipeToDelete>
             );
           })}
         </div>
@@ -520,28 +525,29 @@ const Money: React.FC = () => {
             const pct = goal.targetAmount > 0 ? Math.round((goal.currentAmount / goal.targetAmount) * 100) : 0;
             const daysLeft = Math.max(0, Math.ceil((new Date(goal.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
             return (
-              <div key={goal.id} className="bg-white rounded-2xl p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ backgroundColor: `${goal.color}12` }}>
-                    {goal.icon}
+              <SwipeToDelete key={goal.id} onDelete={async () => { await savingsAPI.delete(goal.id); await refresh(); }}>
+                <div className="bg-white rounded-2xl p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ backgroundColor: `${goal.color}12` }}>
+                      {goal.icon}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-base font-bold text-gray-900">{goal.name}</p>
+                      <p className="text-[10px] text-gray-400">{daysLeft} days left</p>
+                    </div>
+                    <p className="text-lg font-bold" style={{ color: goal.color }}>{pct}%</p>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-base font-bold text-gray-900">{goal.name}</p>
-                    <p className="text-[10px] text-gray-400">{daysLeft} days left</p>
+                  <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
+                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: goal.color }} />
                   </div>
-                  <p className="text-lg font-bold" style={{ color: goal.color }}>{pct}%</p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">{formatMoney(goal.currentAmount)} / {formatMoney(goal.targetAmount)}</span>
+                    <button onClick={() => { setAddToSavingsId(goal.id); setAddAmount(''); }}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg active:scale-95 transition-transform"
+                      style={{ backgroundColor: `${goal.color}12`, color: goal.color }}>+ Add Money</button>
+                  </div>
                 </div>
-                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
-                  <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: goal.color }} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">{formatMoney(goal.currentAmount)} / {formatMoney(goal.targetAmount)}</span>
-                  <button onClick={() => { setAddToSavingsId(goal.id); setAddAmount(''); }}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg active:scale-95 transition-transform"
-                    style={{ backgroundColor: `${goal.color}12`, color: goal.color }}>+ Add Money</button>
-                </div>
-                <button onClick={async () => { await savingsAPI.delete(goal.id); await refresh(); }} className="mt-2 text-[10px] text-red-400 font-medium">Delete goal</button>
-              </div>
+              </SwipeToDelete>
             );
           })}
         </div>
@@ -718,53 +724,56 @@ const Money: React.FC = () => {
       </div>
 
       {/* ══════════ TODAY CARD — Budget + Expenses ══════════ */}
-      <div className="bg-gradient-to-br from-slate-50 via-white to-emerald-50 rounded-2xl mb-3 overflow-hidden border border-gray-100 animate-fade-up" style={{ animationDelay: '80ms' }}>
-        <div className="p-4 pb-3">
+      <div className="relative rounded-2xl mb-3 overflow-hidden border border-emerald-100/60 shadow-lg shadow-emerald-100/30 animate-fade-up" style={{ animationDelay: '80ms', background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 25%, #a7f3d0 50%, #6ee7b7 75%, #34d399 100%)' }}>
+        {/* Decorative glass circles */}
+        <div className="absolute -top-8 -right-8 w-28 h-28 bg-white/20 rounded-full blur-xl" />
+        <div className="absolute bottom-2 -left-6 w-20 h-20 bg-teal-300/20 rounded-full blur-lg" />
+        <div className="p-4 pb-3 relative z-10">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-              <CreditCard size={13} className="text-gray-400" /> Today
+            <h3 className="text-xs font-bold text-emerald-800/70 uppercase tracking-wider flex items-center gap-1.5">
+              <CreditCard size={13} className="text-emerald-600/60" /> Today · {todayDate}
             </h3>
             <button onClick={() => { setShowSetBudgetLimit(true); setDailyBudgetInput(String(profile.dailyBudget)); }}
-              className="text-[10px] text-emerald-600 font-semibold">Budget →</button>
+              className="text-[10px] text-emerald-700 font-bold bg-white/50 px-2 py-0.5 rounded-full backdrop-blur-sm">Budget →</button>
           </div>
           <div className="flex items-end justify-between mb-2">
             <div>
-              <p className={`text-2xl font-bold ${dailyBudget.remaining >= 0 ? 'text-gray-900' : 'text-red-500'}`}>
+              <p className={`text-2xl font-black ${dailyBudget.remaining >= 0 ? 'text-emerald-900' : 'text-red-600'}`}>
                 {dailyBudget.remaining >= 0 ? formatMoney(dailyBudget.remaining) : `-${formatMoney(Math.abs(dailyBudget.remaining))}`}
               </p>
-              <p className="text-[10px] text-gray-400">remaining of {formatMoney(dailyBudget.budget)}</p>
+              <p className="text-[10px] text-emerald-700/60 font-medium">remaining of {formatMoney(dailyBudget.budget)}</p>
             </div>
-            <p className="text-sm font-semibold text-gray-400">{formatMoney(dailyBudget.spent)} spent</p>
+            <p className="text-sm font-bold text-emerald-800/50">{formatMoney(dailyBudget.spent)} spent</p>
           </div>
-          <div className="w-full h-2 bg-gray-200/60 rounded-full overflow-hidden">
-            <div className={`h-full rounded-full transition-all duration-500 ${
-              dailyBudget.pct > 90 ? 'bg-red-500' : dailyBudget.pct > 70 ? 'bg-amber-400' : 'bg-emerald-500'
+          <div className="w-full h-2.5 bg-white/40 rounded-full overflow-hidden backdrop-blur-sm">
+            <div className={`h-full rounded-full transition-all duration-500 shadow-sm ${
+              dailyBudget.pct > 90 ? 'bg-gradient-to-r from-red-400 to-red-500' : dailyBudget.pct > 70 ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-emerald-500 to-teal-500'
             }`} style={{ width: `${Math.min(dailyBudget.pct, 100)}%` }} />
           </div>
           {dailyBudget.remaining < 0 && (
-            <p className="text-[10px] text-red-500 font-medium mt-1.5">⚠️ Over budget</p>
+            <p className="text-[10px] text-red-600 font-semibold mt-1.5 bg-red-50/80 inline-block px-2 py-0.5 rounded-full">⚠️ Over budget</p>
           )}
         </div>
         <div onClick={() => navigateTo('today')}
-          className="border-t border-gray-100/80 px-4 py-3 cursor-pointer active:bg-gray-50/50 transition-colors">
+          className="border-t border-emerald-200/40 px-4 py-3 cursor-pointer active:bg-white/20 transition-colors relative z-10 backdrop-blur-sm">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Spent on</p>
-            <span className="text-[10px] text-emerald-600 font-semibold">Details →</span>
+            <p className="text-[10px] font-bold text-emerald-800/50 uppercase tracking-wider">Spent on</p>
+            <span className="text-[10px] text-emerald-700 font-bold">Details →</span>
           </div>
           {todayByCategory.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {todayByCategory.map(item => {
                 const catInfo = EXPENSE_CATEGORIES.find(c => c.name === item.category);
                 return (
-                  <div key={item.category} className="flex items-center gap-1 bg-white/80 rounded-lg px-2 py-1 shadow-sm">
+                  <div key={item.category} className="flex items-center gap-1 bg-white/60 rounded-lg px-2 py-1 shadow-sm backdrop-blur-sm border border-white/40">
                     <span className="text-xs">{catInfo?.icon || '📦'}</span>
-                    <span className="text-[11px] font-semibold text-gray-700">{formatMoney(item.total)}</span>
+                    <span className="text-[11px] font-bold text-emerald-900">{formatMoney(item.total)}</span>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-xs text-gray-400">Nothing spent yet 🎉</p>
+            <p className="text-xs text-emerald-700/50 font-medium">Nothing spent yet 🎉</p>
           )}
         </div>
       </div>
@@ -795,38 +804,43 @@ const Money: React.FC = () => {
 
       {/* ══════════ CATEGORY BUDGETS (if set) ══════════ */}
       {budgets.length > 0 && (
-        <div className="bg-gradient-to-br from-white via-emerald-50/30 to-teal-50/40 rounded-2xl p-4 mb-3 border border-gray-100 animate-fade-up" style={{ animationDelay: '160ms' }}>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-              <BarChart3 size={13} className="text-gray-400" /> Monthly Budgets
-            </h3>
-            <button onClick={() => navigateTo('budgets')} className="text-[10px] text-emerald-600 font-semibold">Manage →</button>
-          </div>
-          <div className="space-y-2.5">
-            {budgets.slice(0, 3).map((b: any) => {
-              const catInfo = EXPENSE_CATEGORIES.find(c => c.name === b.category);
-              return (
-                <div key={b.id} className="flex items-center gap-2.5">
-                  <span className="text-sm w-6 text-center">{catInfo?.icon || '📦'}</span>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center mb-0.5">
-                      <span className="text-xs font-medium text-gray-700">{b.category}</span>
-                      <span className={`text-[10px] font-semibold ${b.exceeded ? 'text-red-500' : 'text-gray-500'}`}>
-                        {formatMoney(b.spent)} / {formatMoney(b.limit)}
-                      </span>
-                    </div>
-                    <div className="w-full h-2 bg-white/80 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${b.exceeded ? 'bg-red-500' : b.pct >= 80 ? 'bg-amber-400' : 'bg-emerald-500'}`}
-                        style={{ width: `${Math.min(b.pct, 100)}%` }} />
+        <div className="relative rounded-2xl p-4 mb-3 overflow-hidden border border-indigo-100/50 shadow-lg shadow-indigo-100/20 animate-fade-up" style={{ animationDelay: '160ms', background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 25%, #c7d2fe 50%, #a5b4fc 75%, #818cf8 100%)' }}>
+          {/* Decorative glass circles */}
+          <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/15 rounded-full blur-xl" />
+          <div className="absolute bottom-0 left-4 w-16 h-16 bg-violet-300/20 rounded-full blur-lg" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-indigo-900/60 uppercase tracking-wider flex items-center gap-1.5">
+                <BarChart3 size={13} className="text-indigo-500/60" /> Monthly Budgets
+              </h3>
+              <button onClick={() => navigateTo('budgets')} className="text-[10px] text-indigo-700 font-bold bg-white/40 px-2 py-0.5 rounded-full backdrop-blur-sm">Manage →</button>
+            </div>
+            <div className="space-y-2.5">
+              {budgets.slice(0, 3).map((b: any) => {
+                const catInfo = EXPENSE_CATEGORIES.find(c => c.name === b.category);
+                return (
+                  <div key={b.id} className="flex items-center gap-2.5">
+                    <span className="text-sm w-6 text-center">{catInfo?.icon || '📦'}</span>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center mb-0.5">
+                        <span className="text-xs font-semibold text-indigo-900/80">{b.category}</span>
+                        <span className={`text-[10px] font-bold ${b.exceeded ? 'text-red-500' : 'text-indigo-800/60'}`}>
+                          {formatMoney(b.spent)} / {formatMoney(b.limit)}
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-white/40 rounded-full overflow-hidden backdrop-blur-sm">
+                        <div className={`h-full rounded-full transition-all shadow-sm ${b.exceeded ? 'bg-gradient-to-r from-red-400 to-red-500' : b.pct >= 80 ? 'bg-gradient-to-r from-amber-400 to-orange-400' : 'bg-gradient-to-r from-emerald-400 to-teal-500'}`}
+                          style={{ width: `${Math.min(b.pct, 100)}%` }} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+            {budgets.length > 3 && (
+              <button onClick={() => navigateTo('budgets')} className="text-[10px] text-indigo-800/50 font-medium mt-2">+{budgets.length - 3} more</button>
+            )}
           </div>
-          {budgets.length > 3 && (
-            <button onClick={() => navigateTo('budgets')} className="text-[10px] text-gray-400 mt-2">+{budgets.length - 3} more</button>
-          )}
         </div>
       )}
 

@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/helpers';
-import { Flame, Zap, Leaf, Plus, Trash2, Check, Sun, CalendarDays, ListChecks, Calendar, Target, ChevronDown } from 'lucide-react';
+import { Flame, Zap, Leaf, Plus, Check, Sun, CalendarDays, ListChecks, Calendar, Target, ChevronDown } from 'lucide-react';
+import SwipeToDelete from '@/components/SwipeToDelete';
 
 /* ── Urgency system — original themed labels ──────────── */
 const URGENCY = {
@@ -242,41 +243,37 @@ const TaskManager: React.FC = () => {
     const isDone = task.completed;
     return (
       <div key={task.id} className="animate-fade-up group" style={{ animationDelay: `${i * 35}ms` }}>
-        <div className={`relative flex items-center gap-3 px-4 py-3 rounded-xl border transition-all
-          ${isDone ? `${u.cardBg} opacity-70` : `${u.cardBg} hover:shadow-md`}
-          active:scale-[0.99]`}
-          style={{ boxShadow: u.cardShadow }}>
-          <button onClick={() => handleToggle(task)} className="flex-shrink-0">
-            <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
-              isDone ? `bg-gradient-to-br ${u.gradient}` : 'border-2 border-gray-200 hover:border-gray-300'
-            }`}>
-              {isDone && <Check size={13} className="text-white" strokeWidth={3} />}
+        <SwipeToDelete onDelete={() => deleteTask(task.id)} disabled={task.isHabit}>
+          <div className={`relative flex items-center gap-3 px-4 py-3 rounded-xl border transition-all
+            ${isDone ? `${u.cardBg} opacity-70` : `${u.cardBg} hover:shadow-md`}
+            active:scale-[0.99]`}
+            style={{ boxShadow: u.cardShadow }}>
+            <button onClick={() => handleToggle(task)} className="flex-shrink-0">
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+                isDone ? `bg-gradient-to-br ${u.gradient}` : 'border-2 border-gray-200 hover:border-gray-300'
+              }`}>
+                {isDone && <Check size={13} className="text-white" strokeWidth={3} />}
+              </div>
+            </button>
+            {task.isHabit && task.icon && <span className="text-base flex-shrink-0 -ml-1">{task.icon}</span>}
+            <div className="flex-1 min-w-0">
+              <p className={`text-[14px] leading-snug truncate ${isDone ? 'line-through text-gray-400' : 'text-gray-800 font-medium'}`}>
+                {task.text}
+              </p>
+              {task.isHabit && (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded mt-0.5">
+                  ✦ HABIT
+                </span>
+              )}
             </div>
-          </button>
-          {task.isHabit && task.icon && <span className="text-base flex-shrink-0 -ml-1">{task.icon}</span>}
-          <div className="flex-1 min-w-0">
-            <p className={`text-[14px] leading-snug truncate ${isDone ? 'line-through text-gray-400' : 'text-gray-800 font-medium'}`}>
-              {task.text}
-            </p>
-            {task.isHabit && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded mt-0.5">
-                ✦ HABIT
-              </span>
+            {!task.isHabit && (
+              <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${u.lightBg} flex-shrink-0`}>
+                <UIcon size={10} className={u.text} />
+                <span className={`text-[9px] font-bold ${u.text} uppercase`}>{u.label}</span>
+              </div>
             )}
           </div>
-          {!task.isHabit && (
-            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full ${u.lightBg} flex-shrink-0`}>
-              <UIcon size={10} className={u.text} />
-              <span className={`text-[9px] font-bold ${u.text} uppercase`}>{u.label}</span>
-            </div>
-          )}
-          {!task.isHabit && (
-            <button onClick={() => deleteTask(task.id)}
-              className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-50 transition-all">
-              <Trash2 size={13} className="text-gray-300 hover:text-red-400" />
-            </button>
-          )}
-        </div>
+        </SwipeToDelete>
       </div>
     );
   };

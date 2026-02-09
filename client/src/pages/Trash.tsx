@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '@/context/AppContext';
-import { RotateCcw, Trash2 } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
+import SwipeToDelete from '@/components/SwipeToDelete';
 
 const Trash: React.FC = () => {
   const { trashedHabits, restoreHabit, permanentlyDeleteHabit } = useApp();
@@ -15,21 +16,19 @@ const Trash: React.FC = () => {
       {trashedHabits.length > 0 ? (
         <div className="space-y-1.5 stagger">
           {trashedHabits.map(habit => (
-            <div key={habit.id} className="bg-white rounded-xl p-3.5 flex items-center gap-3 animate-fade-up">
-              <span className="text-lg opacity-40">{habit.icon}</span>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-[14px] font-medium text-gray-500 truncate">{habit.name}</h3>
-                <p className="text-[11px] text-gray-400">{habit.category}</p>
+            <SwipeToDelete key={habit.id} onDelete={() => window.confirm(`Permanently delete "${habit.name}"?`) && permanentlyDeleteHabit(habit.id)}>
+              <div className="bg-white rounded-xl p-3.5 flex items-center gap-3 animate-fade-up">
+                <span className="text-lg opacity-40">{habit.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-[14px] font-medium text-gray-500 truncate">{habit.name}</h3>
+                  <p className="text-[11px] text-gray-400">{habit.category}</p>
+                </div>
+                <button onClick={() => restoreHabit(habit.id)}
+                  className="p-1.5 rounded-lg hover:bg-green-50 transition-colors" title="Restore">
+                  <RotateCcw size={15} className="text-emerald-500" />
+                </button>
               </div>
-              <button onClick={() => restoreHabit(habit.id)}
-                className="p-1.5 rounded-lg hover:bg-green-50 transition-colors" title="Restore">
-                <RotateCcw size={15} className="text-emerald-500" />
-              </button>
-              <button onClick={() => window.confirm(`Permanently delete "${habit.name}"?`) && permanentlyDeleteHabit(habit.id)}
-                className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
-                <Trash2 size={15} className="text-red-400" />
-              </button>
-            </div>
+            </SwipeToDelete>
           ))}
         </div>
       ) : (
