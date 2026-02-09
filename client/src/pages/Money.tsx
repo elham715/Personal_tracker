@@ -24,7 +24,7 @@ const Money: React.FC = () => {
   const [budgets, setBudgets] = useState<any[]>([]);
   const [savings, setSavings] = useState<SavingsGoal[]>([]);
   const [profile, setProfile] = useState<MoneyProfile | null>(null);
-  const [monthStats, setMonthStats] = useState({ income: 0, expenses: 0, net: 0, needs: 0, wants: 0, byCategory: {} as Record<string, number>, dailySpending: {} as Record<string, number>, transactionCount: 0 });
+  const [monthStats, setMonthStats] = useState({ income: 0, pendingIncome: 0, totalIncome: 0, expenses: 0, net: 0, needs: 0, wants: 0, byCategory: {} as Record<string, number>, dailySpending: {} as Record<string, number>, transactionCount: 0 });
   const [dailyBudget, setDailyBudget] = useState({ spent: 0, remaining: 0, budget: 500, pct: 0 });
   const [todayByCategory, setTodayByCategory] = useState<{ category: string; total: number; count: number }[]>([]);
   const [todayTxs, setTodayTxs] = useState<Transaction[]>([]);
@@ -43,6 +43,7 @@ const Money: React.FC = () => {
   const [txNote, setTxNote] = useState('');
   const [txDate, setTxDate] = useState(formatDate());
   const [txIsNeed, setTxIsNeed] = useState(true);
+  const [txIsPending, setTxIsPending] = useState(false);
   const [budgetCategory, setBudgetCategory] = useState('Food');
   const [budgetLimit, setBudgetLimit] = useState('');
   const [savingsName, setSavingsName] = useState('');
@@ -87,8 +88,8 @@ const Money: React.FC = () => {
   const handleAddTx = async () => {
     const amount = parseFloat(txAmount);
     if (!amount || amount <= 0) return;
-    await transactionAPI.create({ amount, type: txType, category: txCategory, note: txNote.trim(), isNeed: txIsNeed, date: txDate });
-    setTxAmount(''); setTxNote(''); setShowAddTx(false);
+    await transactionAPI.create({ amount, type: txType, category: txCategory, note: txNote.trim(), isNeed: txIsNeed, isPending: txType === 'income' ? txIsPending : false, date: txDate });
+    setTxAmount(''); setTxNote(''); setTxIsPending(false); setShowAddTx(false);
     await refresh();
   };
   const handleAddBudget = async () => {
@@ -138,6 +139,9 @@ const Money: React.FC = () => {
   const pInfo = PERSONALITY_INFO[profile.personality];
   const activeChallenges = profile.activeChallenges.filter(c => !c.completed);
   const budgetPerDay = transactionAPI.getBudgetPerRemainingDay(Math.max(monthStats.net, 0));
+
+  // ── Determine which view to render ──
+  const renderContent = () => {
 
   // ═══════════════════════════════════════════════════════════════
   //  TODAY'S EXPENSES VIEW
@@ -282,24 +286,34 @@ const Money: React.FC = () => {
         ) : transactions.map(tx => {
           const catInfo = (tx.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).find(c => c.name === tx.category);
           return (
-            <div key={tx.id} className="flex items-center gap-3 bg-white rounded-xl px-4 py-3">
+            <div key={tx.id} className={`flex items-center gap-3 bg-white rounded-xl px-4 py-3 ${tx.isPending ? 'border border-dashed border-amber-200' : ''}`}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center text-base"
                 style={{ backgroundColor: `${catInfo?.color || '#6b7280'}12` }}>
                 {catInfo?.icon || '📦'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800">{tx.note || tx.category}</p>
+                <p className="text-sm font-medium text-gray-800">
+                  {tx.isPending && <span className="text-amber-500">⏳ </span>}{tx.note || tx.category}
+                </p>
                 <p className="text-[10px] text-gray-400">
-                  {tx.category} · {new Date(tx.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  {tx.category} · {tx.isPending ? 'Expected' : new Date(tx.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </p>
               </div>
-              <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-gray-900'}`}>
-                {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
-              </span>
-              <button onClick={async () => { await transactionAPI.delete(tx.id); await refresh(); }}
-                className="p-1 rounded-lg hover:bg-red-50">
-                <Trash2 size={13} className="text-gray-300" />
-              </button>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-bold ${tx.type === 'income' ? (tx.isPending ? 'text-amber-500' : 'text-emerald-600') : 'text-gray-900'}`}>
+                  {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
+                </span>
+                {tx.isPending && (
+                  <button onClick={async () => { await transactionAPI.markReceived(tx.id); await refresh(); }}
+                    className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg active:scale-95 transition-transform whitespace-nowrap">
+                    ✅ Got it
+                  </button>
+                )}
+                <button onClick={async () => { await transactionAPI.delete(tx.id); await refresh(); }}
+                  className="p-1 rounded-lg hover:bg-red-50">
+                  <Trash2 size={13} className="text-gray-300" />
+                </button>
+              </div>
             </div>
           );
         })}
@@ -562,6 +576,16 @@ const Money: React.FC = () => {
           </div>
         </div>
 
+        {/* Pending Income */}
+        {monthStats.pendingIncome > 0 && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <span className="text-[10px] text-amber-200/70">⏳</span>
+            <p className="text-[11px] text-amber-200/70">
+              <span className="font-semibold text-amber-200">{formatMoney(monthStats.pendingIncome)}</span> expected (not received yet)
+            </p>
+          </div>
+        )}
+
         {/* Month Planning Info */}
         {monthStats.net > 0 && remainingDays > 0 && (
           <div className="mt-3 pt-3 border-t border-white/10 flex items-center justify-between">
@@ -757,20 +781,29 @@ const Money: React.FC = () => {
             {transactions.slice(0, 5).map(tx => {
               const catInfo = (tx.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES).find(c => c.name === tx.category);
               return (
-                <div key={tx.id} className="flex items-center gap-3 bg-white rounded-xl px-3.5 py-2.5">
+                <div key={tx.id} className={`flex items-center gap-3 bg-white rounded-xl px-3.5 py-2.5 ${tx.isPending ? 'border border-dashed border-amber-200' : ''}`}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-sm"
                     style={{ backgroundColor: `${catInfo?.color || '#6b7280'}12` }}>
                     {catInfo?.icon || '📦'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{tx.note || tx.category}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate">
+                      {tx.isPending && <span className="text-amber-500">⏳ </span>}{tx.note || tx.category}
+                    </p>
                     <p className="text-[10px] text-gray-400">
-                      {new Date(tx.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {tx.isPending ? 'Expected' : new Date(tx.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </p>
                   </div>
-                  <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-gray-900'}`}>
-                    {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
-                  </span>
+                  {tx.isPending ? (
+                    <button onClick={async () => { await transactionAPI.markReceived(tx.id); await refresh(); }}
+                      className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg active:scale-95 transition-transform whitespace-nowrap">
+                      ✅ Received
+                    </button>
+                  ) : (
+                    <span className={`text-sm font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-gray-900'}`}>
+                      {tx.type === 'income' ? '+' : '-'}{formatMoney(tx.amount)}
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -801,8 +834,16 @@ const Money: React.FC = () => {
         </div>
       )}
 
+    </div>
+  );
+  }; // end renderContent
+
+  return (
+    <>
+      {renderContent()}
+
       {/* ═══════════════════════════════════════════
-          MODALS
+          MODALS — always rendered regardless of view
       ═══════════════════════════════════════════ */}
 
       {/* ADD TRANSACTION */}
@@ -866,6 +907,26 @@ const Money: React.FC = () => {
                 </div>
               )}
 
+              {/* Received vs Expected (income only) */}
+              {txType === 'income' && (
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Have you received it?</label>
+                  <div className="flex gap-2 mt-1.5">
+                    <button onClick={() => setTxIsPending(false)}
+                      className={`flex-1 text-xs font-semibold py-2.5 rounded-xl transition-all ${!txIsPending ? 'bg-emerald-100 text-emerald-700 ring-2 ring-emerald-400' : 'bg-gray-100 text-gray-400'}`}>
+                      ✅ Yes, received
+                    </button>
+                    <button onClick={() => setTxIsPending(true)}
+                      className={`flex-1 text-xs font-semibold py-2.5 rounded-xl transition-all ${txIsPending ? 'bg-amber-100 text-amber-700 ring-2 ring-amber-400' : 'bg-gray-100 text-gray-400'}`}>
+                      ⏳ Coming soon
+                    </button>
+                  </div>
+                  {txIsPending && (
+                    <p className="text-[10px] text-amber-600 mt-1.5">This won't count in your balance until you mark it as received</p>
+                  )}
+                </div>
+              )}
+
               {/* Note */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Note (optional)</label>
@@ -882,8 +943,8 @@ const Money: React.FC = () => {
               </div>
 
               <button onClick={handleAddTx}
-                className={`w-full text-white text-sm font-bold py-3 rounded-xl active:scale-[0.98] transition-transform shadow-sm mt-2 ${txType === 'expense' ? 'bg-red-500 shadow-red-200' : 'bg-emerald-600 shadow-emerald-200'}`}>
-                {txType === 'expense' ? 'Log Expense' : 'Add Income'} {txAmount && `· ${CURRENCY}${txAmount}`}
+                className={`w-full text-white text-sm font-bold py-3 rounded-xl active:scale-[0.98] transition-transform shadow-sm mt-2 ${txType === 'expense' ? 'bg-red-500 shadow-red-200' : txIsPending ? 'bg-amber-500 shadow-amber-200' : 'bg-emerald-600 shadow-emerald-200'}`}>
+                {txType === 'expense' ? 'Log Expense' : txIsPending ? 'Add Expected Income' : 'Add Income'} {txAmount && `· ${CURRENCY}${txAmount}`}
               </button>
             </div>
           </div>
@@ -1046,7 +1107,7 @@ const Money: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

@@ -257,7 +257,9 @@ export const transactionAPI = {
     const m = month || formatDate().slice(0, 7);
     const txs = await db.transactions.filter(t => t.date.startsWith(m)).toArray();
 
-    const income = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const receivedIncome = txs.filter(t => t.type === 'income' && !t.isPending).reduce((s, t) => s + t.amount, 0);
+    const pendingIncome = txs.filter(t => t.type === 'income' && t.isPending).reduce((s, t) => s + t.amount, 0);
+    const income = receivedIncome + pendingIncome; // total expected
     const expenses = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     const needs = txs.filter(t => t.type === 'expense' && t.isNeed).reduce((s, t) => s + t.amount, 0);
     const wants = txs.filter(t => t.type === 'expense' && !t.isNeed).reduce((s, t) => s + t.amount, 0);
@@ -272,7 +274,16 @@ export const transactionAPI = {
       dailySpending[t.date] = (dailySpending[t.date] || 0) + t.amount;
     });
 
-    return { income, expenses, net: income - expenses, needs, wants, byCategory, dailySpending, transactionCount: txs.length };
+    // net uses only received income (pending hasn't arrived yet)
+    return { income: receivedIncome, pendingIncome, totalIncome: income, expenses, net: receivedIncome - expenses, needs, wants, byCategory, dailySpending, transactionCount: txs.length };
+  },
+
+  async markReceived(id: string): Promise<Transaction> {
+    const tx = await db.transactions.get(id);
+    if (!tx) throw new Error('Transaction not found');
+    const updated = { ...tx, isPending: false };
+    await db.transactions.put(updated);
+    return updated;
   },
 
   async getTodaySpending(): Promise<number> {

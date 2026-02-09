@@ -81,6 +81,7 @@ export interface Transaction {
   category: string;       // e.g. 'Food', 'Transport', 'Entertainment'
   note: string;
   isNeed: boolean;        // true = "needed", false = "wanted" (for awareness)
+  isPending?: boolean;    // true = expected income not yet received
   date: string;           // YYYY-MM-DD
   createdAt: string;
 }

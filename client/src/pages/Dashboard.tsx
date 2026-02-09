@@ -31,7 +31,7 @@ const Dashboard: React.FC = () => {
 
   // Memory + Money stats (loaded from local DB)
   const [memoryStats, setMemoryStats] = useState({ brainLevel: 0, totalXP: 0, streak: 0, bestStreak: 0, gamesPlayed: 0, trainedToday: false, todayGames: 0, avgAccuracy: 0 });
-  const [moneyStats, setMoneyStats] = useState({ income: 0, expenses: 0, net: 0, transactionCount: 0 });
+  const [moneyStats, setMoneyStats] = useState({ income: 0, pendingIncome: 0, totalIncome: 0, expenses: 0, net: 0, transactionCount: 0 });
   const [budgetAlerts, setBudgetAlerts] = useState(0);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
